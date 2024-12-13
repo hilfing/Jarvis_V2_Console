@@ -19,11 +19,13 @@ public class Logger
     protected LogLevel ConsoleLevel { get; set; }
     protected LogLevel FileLevel { get; set; }
     private static string LogFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd}.log");
+    private string LoggerName { get; set; }
     
-    public Logger(LogLevel console = LogLevel.Warning, LogLevel file = LogLevel.Debug)
+    public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning, LogLevel fileLevel = LogLevel.Debug)
     {
-        ConsoleLevel = console;
-        FileLevel = file;
+        ConsoleLevel = consoleLevel;
+        FileLevel = fileLevel;
+        LoggerName = loggerName;
 
         string runningDir = AppDomain.CurrentDomain.BaseDirectory;
         string folderName = "Logs";
@@ -39,32 +41,32 @@ public class Logger
     private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss";
 
     // General log method
-    private static void Log(LogLevel level, string message, string caller)
+    private void Log(LogLevel level, string message, string caller)
     {
         var timestamp = DateTime.Now.ToString(LogTimestampFormat);
-        var logMessage = FormatLogMessage(level, timestamp, caller, message);
+        var logMessage = FormatLogMessage(level, timestamp, message);
 
-        if (level >= LogLevel.Debug)
+        if (level >= FileLevel)
         {
-            WriteToFile(logMessage);
+            WriteToFile(logMessage, caller);
         }
-        if (level >= LogLevel.Warning)
+        if (level >= ConsoleLevel)
         {
             WriteToConsole(logMessage);
         }
     }
 
     // Formats log messages with proper markup based on log level.
-    private static string FormatLogMessage(LogLevel level, string timestamp, string caller, string message)
+    private string FormatLogMessage(LogLevel level, string timestamp, string message)
     {
         return level switch
         {
-            LogLevel.Info => $"[blue]INFO   [/]| [cyan]{timestamp}[/] | [green]{caller}[/] | {message}",
-            LogLevel.Warning => $"[yellow]WARNING[/]| [cyan]{timestamp}[/] | [green]{caller}[/] | {message}",
-            LogLevel.Error => $"[red]ERROR  [/]| [cyan]{timestamp}[/] | [green]{caller}[/] | {message}",
-            LogLevel.Debug => $"[grey]DEBUG  [/]| [cyan]{timestamp}[/] | [green]{caller}[/] | {message}",
-            LogLevel.Critical => $"[bold red]CRITICAL[/]| [cyan]{timestamp}[/] | [green]{caller}[/] | {message}",
-            _ => $"[cyan]{timestamp}[/] | [green]{caller}[/] | {message}"
+            LogLevel.Info => $"[blue]INFO   [/]| [cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}",
+            LogLevel.Warning => $"[yellow]WARNING[/]| [cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}",
+            LogLevel.Error => $"[red]ERROR  [/]| [cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}",
+            LogLevel.Debug => $"[grey]DEBUG  [/]| [cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}",
+            LogLevel.Critical => $"[bold red]CRITICAL[/]| [cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}",
+            _ => $"[cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}"
         };
     }
 
@@ -75,11 +77,11 @@ public class Logger
     }
 
     // Writes a log message to a file.
-    private static void WriteToFile(string logMessage)
+    private void WriteToFile(string logMessage, string caller)
     {
         try
         {
-            File.AppendAllText(LogFilePath, logMessage.EscapeMarkup() + Environment.NewLine);
+            File.AppendAllText(LogFilePath, logMessage.EscapeMarkup() + $"  [{caller}]" + Environment.NewLine);
         }
         catch (Exception ex)
         {
@@ -96,9 +98,9 @@ public class Logger
     }
 
     // Logging methods for specific log levels.
-    public static void Info(string message) => Log(LogLevel.Info, message, GetCaller());
-    public static void Warning(string message) => Log(LogLevel.Warning, message, GetCaller());
-    public static void Error(string message) => Log(LogLevel.Error, message, GetCaller());
-    public static void Debug(string message) => Log(LogLevel.Debug, message, GetCaller());
-    public static void Critical(string message) => Log(LogLevel.Critical, message, GetCaller());
+    public void Info(string message) => Log(LogLevel.Info, message, GetCaller());
+    public void Warning(string message) => Log(LogLevel.Warning, message, GetCaller());
+    public void Error(string message) => Log(LogLevel.Error, message, GetCaller());
+    public void Debug(string message) => Log(LogLevel.Debug, message, GetCaller());
+    public void Critical(string message) => Log(LogLevel.Critical, message, GetCaller());
 }
