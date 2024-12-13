@@ -104,8 +104,106 @@ public class Logger
 
     private static string GetCaller()
     {
-        return new StackTrace().GetFrame(2)?.GetMethod()?.DeclaringType?.Name ?? "Unknown";
+    try
+    {
+        // Get the stack trace
+        StackTrace stackTrace = new StackTrace(true);
+        
+        // Directly get frame 2
+        StackFrame frame = stackTrace.GetFrame(2);
+        
+        if (frame == null)
+        {
+            return "Frame 2 is null";
+        }
+        
+        MethodBase method = frame.GetMethod();
+        
+        if (method == null)
+        {
+            return "Method in frame 2 is null";
+        }
+        
+        // Collect detailed information
+        StringBuilder callerInfo = new StringBuilder();
+        
+        // Declaring Type Information
+        string declaringTypeName = method.DeclaringType?.FullName ?? "Unknown";
+        
+        // Extract method name from declaring type for compiler-generated async methods
+        string methodName = declaringTypeName.Contains("<") 
+            ? ExtractMethodNameFromDeclaringType(declaringTypeName) 
+            : method.Name;
+        
+        // Declaring Type Information
+        callerInfo.AppendLine($"Declaring Type: {declaringTypeName}");
+        
+        // Method Name
+        callerInfo.AppendLine($"Method Name: {methodName}");
+        
+        // Namespace
+        callerInfo.AppendLine($"Namespace: {method.DeclaringType?.Namespace ?? "Unknown"}");
+        
+        // Method Signature
+        callerInfo.AppendLine($"Method Signature: {method}");
+        
+        // Source File and Line Number
+        string fileName = SimplifyFilePath(frame.GetFileName());
+        int lineNumber = frame.GetFileLineNumber();
+        
+        callerInfo.AppendLine($"Source File: {fileName ?? "Unknown"}");
+        callerInfo.AppendLine($"Line Number: {(lineNumber > 0 ? lineNumber.ToString() : "Unknown")}");
+        
+        return callerInfo.ToString();
     }
+    catch (Exception ex)
+    {
+        return $"Error retrieving caller information: {ex.Message}";
+    }
+}
+
+// Helper method to extract method name from compiler-generated type names
+    private static string ExtractMethodNameFromDeclaringType(string declaringTypeName)
+    {
+        // First, try the original pattern with << and >
+        int startIndex = declaringTypeName.IndexOf("<<");
+        int endIndex = startIndex >= 0 
+            ? declaringTypeName.IndexOf(">", startIndex + 2)
+            : -1;
+
+        if (startIndex >= 0 && endIndex > startIndex)
+        {
+            return declaringTypeName.Substring(startIndex + 2, endIndex - startIndex - 2);
+        }
+
+        // If the first pattern fails, try the alternative pattern with <> and >
+        startIndex = declaringTypeName.IndexOf("<");
+        endIndex = startIndex >= 0 
+            ? declaringTypeName.IndexOf(">", startIndex)
+            : -1;
+
+        if (startIndex >= 0 && endIndex > startIndex)
+        {
+            return declaringTypeName.Substring(startIndex + 1, endIndex - startIndex - 1);
+        }
+
+        // If no pattern matches, return "Unknown"
+        return "Unknown";
+    }
+
+// Helper method to simplify file path
+private static string SimplifyFilePath(string fullPath)
+{
+    if (string.IsNullOrEmpty(fullPath))
+        return null;
+    
+    // Split the path and take the last two components
+    string[] pathParts = fullPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+    
+    return pathParts.Length > 1 
+        ? string.Join("/", pathParts.Skip(Math.Max(0, pathParts.Length - 2)))
+        : fullPath;
+}
 
     // Logging methods for specific log levels.
     public void Info(string message) => Log(LogLevel.Info, message, GetCaller());
