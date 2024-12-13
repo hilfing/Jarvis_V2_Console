@@ -1,4 +1,8 @@
-namespace Jarvis_V2_Console;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+
+namespace Jarvis_V2_Console.Handlers;
 
 using System;
 using System.Diagnostics;
@@ -18,7 +22,7 @@ public class Logger
     
     protected LogLevel ConsoleLevel { get; set; }
     protected LogLevel FileLevel { get; set; }
-    private static string LogFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd}.log");
+    private static string LogFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
     private string LoggerName { get; set; }
     
     public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning, LogLevel fileLevel = LogLevel.Debug)
@@ -69,7 +73,14 @@ public class Logger
             _ => $"[cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}"
         };
     }
-
+    
+    static string RemoveMarkup(string input)
+    {
+        // Regex to match Spectre.Console markup tags
+        var regex = new Regex(@"\[(?:(?:bold\s*)?[a-z]+)\]|\[/\]", RegexOptions.IgnoreCase);
+        return regex.Replace(input, string.Empty);
+    }
+    
     // Writes a log message to the console.
     private static void WriteToConsole(string logMessage)
     {
@@ -81,7 +92,7 @@ public class Logger
     {
         try
         {
-            File.AppendAllText(LogFilePath, logMessage.EscapeMarkup() + $"  [{caller}]" + Environment.NewLine);
+            File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine + caller + Environment.NewLine);
         }
         catch (Exception ex)
         {
@@ -91,7 +102,6 @@ public class Logger
     }
 
 
-    // Retrieves the caller's type name from the stack trace.
     private static string GetCaller()
     {
         return new StackTrace().GetFrame(2)?.GetMethod()?.DeclaringType?.Name ?? "Unknown";
