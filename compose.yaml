@@ -1,0 +1,6 @@
+﻿services:
+  jarvis v2 consolejarvisv2console:
+    image: jarvis v2 consolejarvisv2console
+    build:
+      context: .
+      dockerfile: Jarvis V2 Console/Dockerfile
