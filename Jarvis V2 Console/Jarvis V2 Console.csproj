@@ -7,7 +7,8 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-    </PropertyGroup>
+      <UserSecretsId>5c25fdf5-bc55-49b1-9c2d-14e078c5a5da</UserSecretsId>
+  </PropertyGroup>
 
     <ItemGroup>
       <Content Include="..\.dockerignore">

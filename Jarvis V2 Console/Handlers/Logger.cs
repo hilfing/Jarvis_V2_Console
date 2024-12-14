@@ -33,15 +33,6 @@ public class Logger
 
         string runningDir = AppDomain.CurrentDomain.BaseDirectory;
         string folderName = "Logs";
-        try
-        {
-            
-            folderName = ConfigManager.GetValue("Logging", "LogPath");
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine("[red]Failed to get log folder name from configuration. Using default folder name.[/]");
-        }
         string folderPath = Path.Combine(runningDir, folderName);
 
 
@@ -99,19 +90,10 @@ public class Logger
     // Writes a log message to a file.
     private void WriteToFile(string logMessage, string caller)
     {
-        string loglevel = "Standard";
-        try
-        {
-            loglevel = ConfigManager.GetValue("Logging", "LogLevel");
-        }
-        catch (Exception ex)
-        {
-            AnsiConsole.MarkupLine("[red]Failed to get log level from configuration. Using default log level.[/]");
-        }
         
         try
         {
-            if (loglevel == "Deep")
+            if (logMessage.Contains("Error") || logMessage.Contains("CRITICAL") || logMessage.Contains("WARNING"))
             {
                 File.AppendAllText(LogFilePath,
                     RemoveMarkup(logMessage) + Environment.NewLine + caller + Environment.NewLine);
@@ -120,6 +102,7 @@ public class Logger
             {
                 File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine);
             }
+            
         }
         catch (Exception ex)
         {

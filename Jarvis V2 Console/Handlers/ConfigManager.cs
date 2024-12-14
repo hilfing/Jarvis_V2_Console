@@ -58,19 +58,6 @@ public static class ConfigManager
             )
         };
 
-        _configStructure["Logging"] = new Dictionary<string, (string, string)>
-        {
-            ["LogPath"] = (
-                "Logs",
-                "Directory to store log files"
-            ),
-            ["LogLevel"] = (
-                "Standard",
-                "Logging level (Standard, Deep) [Only set to Deep if told by support]"
-            )
-            
-        };
-
         logger.Info("Default configuration structure initialized.");
     }
 

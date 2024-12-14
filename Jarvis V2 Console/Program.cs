@@ -26,7 +26,6 @@ class Program
                 Console.WriteLine($"Query result: {result}");
             }
         }).GetAwaiter().GetResult();
-        
         try
         {
             // Get a specific configuration value
@@ -51,5 +50,6 @@ class Program
         {
             Console.WriteLine($"Configuration Error: {ex.Message}");
         }
+        
     }
 }
