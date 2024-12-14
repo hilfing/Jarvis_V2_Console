@@ -23,7 +23,7 @@ public static class ConfigManager
 
     static ConfigManager()
     {
-        logger.Debug("Initializing ConfigManager...");
+        logger.Info("Initializing ConfigManager...");
         InitializeDefaultConfigStructure();
         LoadOrCreateConfiguration();
     }
@@ -34,27 +34,19 @@ public static class ConfigManager
 
         _configStructure = new ConcurrentDictionary<string, Dictionary<string, (string, string)>>();
 
-        _configStructure["Database"] = new Dictionary<string, (string, string)>
+        _configStructure["Logging"] = new Dictionary<string, (string, string)>
         {
-            ["ConnectionString"] = (
-                "Server=localhost;Database=mydb;",
-                "Database connection string. Format: Server=host;Database=name;"
+            ["ConsoleLogLevel"] = (
+                "Warning",
+                "Minimum log level to display in console. Options: [Debug, Info, Warning, Error, Critical]"
             ),
-            ["Timeout"] = (
-                "30",
-                "Connection timeout in seconds"
-            )
-        };
-
-        _configStructure["Performance"] = new Dictionary<string, (string, string)>
-        {
-            ["MaxCacheSize"] = (
-                "1024",
-                "Maximum number of items to keep in memory cache"
+            ["FileLogLevel"] = (
+                "Debug",
+                "Minimum log level to write to log file. Options: [Debug, Info, Warning, Error, Critical]"
             ),
-            ["ThreadPoolSize"] = (
-                "4",
-                "Number of threads in the application thread pool"
+            ["LogFilePath"] = (
+                "Logs",
+                "Relative path (Directory) to store log files. Default: [Logs]"
             )
         };
 
@@ -105,6 +97,15 @@ public static class ConfigManager
         catch (Exception ex)
         {
             logger.Error($"Error loading configuration: {ex.Message}");
+            
+            string backupPath = Path.Combine(
+                Path.GetDirectoryName(ConfigFilePath),
+                $"config_backup_{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.ini"
+            );
+            File.Copy(ConfigFilePath, backupPath);
+            logger.Warning($"Backup of old configuration file created at: {backupPath}");
+            
+            logger.Warning("Recreating default configuration...");
             CreateConfiguration();
         }
     }
@@ -183,12 +184,14 @@ public static class ConfigManager
     public static Dictionary<string, Dictionary<string, string>> GetAllConfigurations()
     {
         logger.Debug("Fetching all configurations...");
-        return _configStructure.ToDictionary(
+        var allConfig =  _configStructure.ToDictionary(
             section => section.Key,
             section => section.Value.ToDictionary(
                 setting => setting.Key,
                 setting => setting.Value.Value
             )
         );
+        logger.Debug("All configurations fetched successfully.");
+        return allConfig;
     }
 }

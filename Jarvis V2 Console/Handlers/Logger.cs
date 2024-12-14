@@ -22,9 +22,10 @@ public class Logger
     
     protected LogLevel ConsoleLevel { get; set; }
     protected LogLevel FileLevel { get; set; }
-    private static string LogFilePath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
+    private static string LogFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
     private string LoggerName { get; set; }
     
+    protected static StringBuilder InternalLogCache = new StringBuilder();
     public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning, LogLevel fileLevel = LogLevel.Debug)
     {
         ConsoleLevel = consoleLevel;
@@ -43,6 +44,39 @@ public class Logger
     }
 
     private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss:fff";
+    
+    public void ChangeLogLevel(LogLevel consoleLevel, LogLevel fileLevel)
+    {
+        Log(LogLevel.Debug, "Changing log levels...", GetCaller());
+        ConsoleLevel = consoleLevel;
+        FileLevel = fileLevel;
+        Log(LogLevel.Debug, $"Console log level set to: {consoleLevel}", GetCaller());
+        Log(LogLevel.Debug, $"File log level set to: {fileLevel}", GetCaller());
+    }
+    
+    public void ChangeLogFilePath(string path)
+    {
+        try
+        {
+            LogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
+            string runningDir = AppDomain.CurrentDomain.BaseDirectory;
+            string folderPath = Path.Combine(runningDir, path);
+            if (!Directory.Exists(folderPath))
+            {
+                Directory.CreateDirectory(folderPath);
+            }
+            Log(LogLevel.Debug, $"Log file path changed to: {LogFilePath}", GetCaller());
+            
+            File.AppendAllText(LogFilePath, InternalLogCache.ToString());
+            Log(LogLevel.Debug, "Internal log cache written to new log file.", GetCaller());
+            
+        }
+        catch (Exception)
+        {
+            Log(LogLevel.Warning, "Invalid file path provided. Log file path remains unchanged.", GetCaller());
+            AnsiConsole.MarkupLine("[red]Invalid file path provided. Log file path remains unchanged.[/]");
+        }
+    }
 
     // General log method
     private void Log(LogLevel level, string message, string caller)
@@ -102,10 +136,12 @@ public class Logger
             {
                 File.AppendAllText(LogFilePath,
                     RemoveMarkup(logMessage) + Environment.NewLine + caller + Environment.NewLine);
+                InternalLogCache.AppendLine(RemoveMarkup(logMessage) + Environment.NewLine + caller);
             }
             else
             {
                 File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine);
+                InternalLogCache.AppendLine(RemoveMarkup(logMessage));
             }
             
         }

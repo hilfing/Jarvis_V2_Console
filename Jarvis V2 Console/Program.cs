@@ -1,7 +1,5 @@
 ﻿using System.Reflection;
 using Jarvis_V2_Console.Handlers;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 namespace Jarvis_V2_Console;
@@ -10,7 +8,8 @@ class Program
 {
     static void Main(string[] args)
     {
-        Logger logger = new Logger("JarvisAI.Main");
+        Logger logger = SetupLogger();
+        
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = "Jarvis_V2_Console.secrets.json";
 
@@ -43,6 +42,7 @@ class Program
                 Console.WriteLine($"DataBase Server Time: {result}");
             }
         }).GetAwaiter().GetResult();
+        
         // ConfigManager Testing Code
         /*
          try
@@ -71,5 +71,36 @@ class Program
         }
         */
         
+    }
+
+    private static Logger SetupLogger()
+    {
+        Logger logger = new Logger("JarvisAI.Main");
+        
+        // Set log levels based on configuration
+        Dictionary<string, Logger.LogLevel> logLevels = new Dictionary<string, Logger.LogLevel>
+        {
+            { "Debug", Logger.LogLevel.Debug },
+            { "Info", Logger.LogLevel.Info },
+            { "Warning", Logger.LogLevel.Warning },
+            { "Error", Logger.LogLevel.Error },
+            { "Critical", Logger.LogLevel.Critical }
+        };
+        string consoleLogLevel = ConfigManager.GetValue("Logging", "ConsoleLogLevel");
+        string fileLogLevel = ConfigManager.GetValue("Logging", "FileLogLevel");
+        if (logLevels.ContainsKey(consoleLogLevel) && logLevels.ContainsKey(fileLogLevel))
+        {
+            logger.ChangeLogLevel(logLevels[consoleLogLevel], logLevels[fileLogLevel]);
+        }
+        else
+        {
+            logger.Warning("Invalid log level configuration detected. Using default values.");
+        }
+        
+        // Set log file path based on configuration
+        string logFilePath = ConfigManager.GetValue("Logging", "LogFilePath");
+        logger.ChangeLogFilePath(logFilePath);
+        
+        return logger;
     }
 }
