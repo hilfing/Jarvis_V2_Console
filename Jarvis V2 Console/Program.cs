@@ -1,7 +1,6 @@
 ﻿using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
 using Jarvis_V2_Console.Handlers;
+using Jarvis_V2_Console.Utils;
 using Newtonsoft.Json.Linq;
 
 namespace Jarvis_V2_Console;
@@ -22,9 +21,9 @@ class Program
             password: dbCreds["Password"]?.Value<string>() ?? ""
         );
 
-        VerifyDatabaseConnection(logger, dbHandler);
+        GeneralUtils.VerifyDatabaseConnection(logger, dbHandler);
         
-        logger.Info("All configurations:" + Environment.NewLine + GetAllConfigurations().ToString());
+        logger.Info("All configurations:" + Environment.NewLine + GeneralUtils.GetAllConfigurations().ToString());
         
         Cleanup(logger, dbHandler);
         
@@ -68,37 +67,6 @@ class Program
         dbhandler.CleanupAsync();
         dbhandler.DisposeAsync().GetAwaiter().GetResult();
         logger.Info("Cleanup complete.");
-    }
-    
-    private static StringBuilder GetAllConfigurations()
-    {
-        StringBuilder sb = new StringBuilder();
-        var allConfigs = ConfigManager.GetAllConfigurations();
-        foreach (var section in allConfigs)
-        {
-            sb.AppendLine($"Section: {section.Key}");
-            foreach (var setting in section.Value)
-            {
-                sb.AppendLine($"  {setting.Key}: {setting.Value}");
-            }
-        }
-
-        return sb;
-    }
-    
-    private static void VerifyDatabaseConnection(Logger logger, DatabaseHandler dbHandler)
-    {
-        Task.Run(async () =>
-        {
-            bool isConnected = await dbHandler.CheckConnectionAsync();
-            logger.Info($"Database connection status: {isConnected}");
-
-            if (isConnected)
-            {
-                string result = await dbHandler.ExecuteQueryAsync("SELECT NOW();");
-                Console.WriteLine($"DataBase Server Time: {result}");
-            }
-        }).GetAwaiter().GetResult();
     }
     
     private static JObject GetSecrets()
