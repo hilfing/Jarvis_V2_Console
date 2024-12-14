@@ -7,9 +7,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="d1b2e592-2dab-4121-8fe6-a7874369167e" name="Changes" comment="Rename project to `Jarvis_V2_Console` and reorganize structure.&#10;&#10;The project name and folder structure have been updated to use a consistent naming convention, replacing spaces with underscores. Related `.idea` files and solution configurations were regenerated or moved accordingly.">
+    <list default="true" id="d1b2e592-2dab-4121-8fe6-a7874369167e" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/.idea.Jarvis V2 Console/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.Jarvis V2 Console/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Jarvis_V2_Console/Jarvis_V2_Console.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/Jarvis_V2_Console/Jarvis_V2_Console.csproj" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Jarvis_V2_Console/Program.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jarvis_V2_Console/Program.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Jarvis_V2_Console/Utils/GeneralUtils.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Jarvis_V2_Console/Utils/GeneralUtils.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,6 +53,7 @@
     <setting file="file://$PROJECT_DIR$/Jarvis_V2_Console/Handlers/Logger.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Jarvis_V2_Console/Program.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Jarvis_V2_Console/Utils/GeneralUtils.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="mock:///home/hilfing/RiderProjects/Jarvis V2 Console/Jarvis_V2_Console/Utils/GeneralUtils.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
   <component name="ProjectColorInfo">{
@@ -147,7 +149,7 @@
       <workItem from="1734116460814" duration="97000" />
       <workItem from="1734116565057" duration="5792000" />
       <workItem from="1734146154693" duration="11879000" />
-      <workItem from="1734194665202" duration="9155000" />
+      <workItem from="1734194665202" duration="10713000" />
     </task>
     <task id="LOCAL-00001" summary="Add initial implementation of Jarvis V2 Console project&#10;&#10;Introduced the Jarvis V2 Console project with core structure, including `Program.cs`, `Logger.cs`, Docker support, and build configuration. Added supporting files such as `compose.yaml`, `.gitignore`, `.dockerignore`, and IDE-specific configuration files for Rider and Visual Studio solutions. Logging functionality and Dockerfile are also included for runtime and build support.">
       <option name="closed" value="true" />
@@ -293,7 +295,15 @@
       <option name="project" value="LOCAL" />
       <updated>1734204638604</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="Add a welcome message with enhanced console display&#10;&#10;Introduced `DisplayWelcomeMessage` using the Spectre.Console library to create a rich and interactive welcome screen. This feature provides user-friendly instructions and a visually appealing interface, improving the startup experience.">
+      <option name="closed" value="true" />
+      <created>1734206380226</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1734206380226</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -337,6 +347,7 @@
     <MESSAGE value="Invalid configuration: openAiApiKey cannot be null or empty. API keys can be generated here: https://platform.openai.com/account/api-keys." />
     <MESSAGE value="Update logger namespace to JarvisAI.Processes.Main&#10;&#10;Refined the logger initialization to use a more specific namespace. This change improves clarity and organization in the logging structure." />
     <MESSAGE value="Rename project to `Jarvis_V2_Console` and reorganize structure.&#10;&#10;The project name and folder structure have been updated to use a consistent naming convention, replacing spaces with underscores. Related `.idea` files and solution configurations were regenerated or moved accordingly." />
-    <option name="LAST_COMMIT_MESSAGE" value="Rename project to `Jarvis_V2_Console` and reorganize structure.&#10;&#10;The project name and folder structure have been updated to use a consistent naming convention, replacing spaces with underscores. Related `.idea` files and solution configurations were regenerated or moved accordingly." />
+    <MESSAGE value="Add a welcome message with enhanced console display&#10;&#10;Introduced `DisplayWelcomeMessage` using the Spectre.Console library to create a rich and interactive welcome screen. This feature provides user-friendly instructions and a visually appealing interface, improving the startup experience." />
+    <option name="LAST_COMMIT_MESSAGE" value="Add a welcome message with enhanced console display&#10;&#10;Introduced `DisplayWelcomeMessage` using the Spectre.Console library to create a rich and interactive welcome screen. This feature provides user-friendly instructions and a visually appealing interface, improving the startup experience." />
   </component>
 </project>

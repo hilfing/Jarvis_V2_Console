@@ -3,6 +3,7 @@ using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
 using Newtonsoft.Json.Linq;
 using Spectre.Console;
+using Sharprompt;
 
 namespace Jarvis_V2_Console;
 
@@ -118,6 +119,31 @@ class Program
         Console.ReadLine();
     }
 
+    public static bool ChooseOption(Logger logger)
+    {
+        // Display the choices to the user
+        var choice = Prompt.Select("Select an Option", new[] { "Login", "Register", "Exit" });
+
+        switch (choice)
+        {
+            case "Login":
+                // Login();
+                return true;
+                break;
+            case "Register":
+                // Register();
+                return true;
+                break;
+            case "Exit":
+                AnsiConsole.MarkupLine("[cyan]Exiting... GoodBye!![/]");
+                logger.Info("User decided to Exit at Startup Prompt");
+                return false;
+                break;
+            default:
+                logger.Warning("Invalid Choice chosen by User at Startup Prompt");
+                return false;
+        }
+    }
 
     
 }
