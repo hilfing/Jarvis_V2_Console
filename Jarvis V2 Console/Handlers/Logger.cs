@@ -58,6 +58,11 @@ public class Logger
         {
             WriteToConsole(logMessage);
         }
+
+        if (level >= LogLevel.Critical)
+        {
+            Environment.Exit(1);
+        }
     }
 
     // Formats log messages with proper markup based on log level.
