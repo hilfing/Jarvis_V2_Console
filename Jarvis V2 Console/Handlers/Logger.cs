@@ -68,11 +68,11 @@ public class Logger
             if (!Directory.Exists(folderPath))
             {
                 Directory.CreateDirectory(folderPath);
+                File.AppendAllText(LogFilePath, InternalLogCache.ToString());
+                Log(LogLevel.Debug, "Internal log cache written to new log file.", GetCaller());
             }
             Log(LogLevel.Debug, $"Log file path changed to: {LogFilePath}", GetCaller());
-            
-            File.AppendAllText(LogFilePath, InternalLogCache.ToString());
-            Log(LogLevel.Debug, "Internal log cache written to new log file.", GetCaller());
+            Log(LogLevel.Debug, "Skipped writing Internal log cache to new log file", GetCaller());
             
         }
         catch (Exception)
