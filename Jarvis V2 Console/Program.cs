@@ -26,5 +26,30 @@ class Program
                 Console.WriteLine($"Query result: {result}");
             }
         }).GetAwaiter().GetResult();
+        
+        try
+        {
+            // Get a specific configuration value
+            string connectionString = ConfigManager.GetValue("Database", "ConnectionString");
+            Console.WriteLine($"Current DB Connection: {connectionString}");
+
+            // Update a configuration value
+            ConfigManager.UpdateValue("Database", "ConnectionString", "Server=newhost;Database=newdb;");
+
+            // Get all configurations
+            var allConfigs = ConfigManager.GetAllConfigurations();
+            foreach (var section in allConfigs)
+            {
+                Console.WriteLine($"Section: {section.Key}");
+                foreach (var setting in section.Value)
+                {
+                    Console.WriteLine($"  {setting.Key}: {setting.Value}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Configuration Error: {ex.Message}");
+        }
     }
 }

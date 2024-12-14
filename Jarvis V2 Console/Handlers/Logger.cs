@@ -33,6 +33,15 @@ public class Logger
 
         string runningDir = AppDomain.CurrentDomain.BaseDirectory;
         string folderName = "Logs";
+        try
+        {
+            
+            folderName = ConfigManager.GetValue("Logging", "LogPath");
+        }
+        catch (Exception ex)
+        {
+            AnsiConsole.MarkupLine("[red]Failed to get log folder name from configuration. Using default folder name.[/]");
+        }
         string folderPath = Path.Combine(runningDir, folderName);
 
 
@@ -42,7 +51,7 @@ public class Logger
         }
     }
 
-    private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss";
+    private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss:fff";
 
     // General log method
     private void Log(LogLevel level, string message, string caller)
