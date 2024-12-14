@@ -31,7 +31,7 @@ class Program
 
     private static Logger SetupLogger()
     {
-        Logger logger = new Logger("JarvisAI.Main");
+        Logger logger = new Logger("JarvisAI.Processes.Main");
         
         // Set log levels based on configuration
         Dictionary<string, Logger.LogLevel> logLevels = new Dictionary<string, Logger.LogLevel>
