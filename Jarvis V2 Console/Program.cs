@@ -14,15 +14,14 @@ class Program
         var assembly = Assembly.GetExecutingAssembly();
         var resourceName = "Jarvis_V2_Console.secrets.json";
 
-        string secrets;
+        JObject json;
 
         using (Stream stream = assembly.GetManifestResourceStream(resourceName))
         using (StreamReader reader = new StreamReader(stream))
         {
-            secrets = reader.ReadToEnd();
+            string secrets = reader.ReadToEnd();
+            json = JObject.Parse(secrets);
         }
-        
-        JObject json = JObject.Parse(secrets);
         
         JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
         
@@ -41,10 +40,12 @@ class Program
             if (isConnected)
             {
                 string result = await handler.ExecuteQueryAsync("SELECT NOW();");
-                Console.WriteLine($"Query result: {result}");
+                Console.WriteLine($"DataBase Server Time: {result}");
             }
         }).GetAwaiter().GetResult();
-        try
+        // ConfigManager Testing Code
+        /*
+         try
         {
             // Get a specific configuration value
             string connectionString = ConfigManager.GetValue("Database", "ConnectionString");
@@ -68,6 +69,7 @@ class Program
         {
             Console.WriteLine($"Configuration Error: {ex.Message}");
         }
+        */
         
     }
 }
