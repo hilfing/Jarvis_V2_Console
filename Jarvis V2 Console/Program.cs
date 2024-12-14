@@ -6,7 +6,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        Logger logger = new Logger("JarvisAI.Main", 0, 0);
+        Logger logger = new Logger("JarvisAI.Main");
         
         var handler = new DatabaseHandler(
             host: "localhost",
