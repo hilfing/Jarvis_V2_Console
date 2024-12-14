@@ -54,61 +54,167 @@ public static class ConfigManager
     }
 
     private static void LoadOrCreateConfiguration()
+{
+    try
     {
-        try
+        logger.Debug("Checking if configuration file exists...");
+        var directory = Path.GetDirectoryName(ConfigFilePath);
+
+        if (!string.IsNullOrWhiteSpace(directory))
         {
-            logger.Debug("Checking if configuration file exists...");
-            var directory = Path.GetDirectoryName(ConfigFilePath);
+            logger.Debug($"Ensuring directory exists: {directory}");
+            Directory.CreateDirectory(directory);
+        }
 
-            if (!string.IsNullOrWhiteSpace(directory))
+        if (!File.Exists(ConfigFilePath))
+        {
+            logger.Info("Configuration file does not exist. Creating default configuration...");
+            CreateConfiguration();
+            return;
+        }
+
+        logger.Info("Loading configuration from file...");
+        var parser = new FileIniDataParser();
+        
+        // Validate file format before parsing
+        ValidateConfigFileFormat(ConfigFilePath);
+
+        var configData = parser.ReadFile(ConfigFilePath);
+
+        foreach (var section in configData.Sections)
+        {
+            if (_configStructure.ContainsKey(section.SectionName))
             {
-                logger.Debug($"Ensuring directory exists: {directory}");
-                Directory.CreateDirectory(directory);
-            }
-
-            if (!File.Exists(ConfigFilePath))
-            {
-                logger.Info("Configuration file does not exist. Creating default configuration...");
-                CreateConfiguration();
-                return;
-            }
-
-            logger.Info("Loading configuration from file...");
-            var parser = new FileIniDataParser();
-            var configData = parser.ReadFile(ConfigFilePath);
-
-            foreach (var section in configData.Sections)
-            {
-                if (_configStructure.ContainsKey(section.SectionName))
+                foreach (var key in section.Keys)
                 {
-                    foreach (var key in section.Keys)
+                    if (_configStructure[section.SectionName].ContainsKey(key.KeyName))
                     {
-                        if (_configStructure[section.SectionName].ContainsKey(key.KeyName))
-                        {
-                            var existingEntry = _configStructure[section.SectionName][key.KeyName];
-                            _configStructure[section.SectionName][key.KeyName] = (key.Value, existingEntry.Comment);
-                        }
+                        var existingEntry = _configStructure[section.SectionName][key.KeyName];
+                        _configStructure[section.SectionName][key.KeyName] = (key.Value, existingEntry.Comment);
+                    }
+                    else
+                    {
+                        logger.Warning($"Unknown configuration key '{key.KeyName}' in section '{section.SectionName}'");
                     }
                 }
             }
+            else
+            {
+                logger.Warning($"Unknown configuration section '{section.SectionName}'");
+            }
+        }
 
-            logger.Info("Configuration loaded successfully.");
-        }
-        catch (Exception ex)
-        {
-            logger.Error($"Error loading configuration: {ex.Message}");
-            
-            string backupPath = Path.Combine(
-                Path.GetDirectoryName(ConfigFilePath),
-                $"config_backup_{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.ini"
-            );
-            File.Copy(ConfigFilePath, backupPath);
-            logger.Warning($"Backup of old configuration file created at: {backupPath}");
-            
-            logger.Warning("Recreating default configuration...");
-            CreateConfiguration();
-        }
+        logger.Info("Configuration loaded successfully.");
     }
+    catch (ConfigurationFormatException ex)
+    {
+        logger.Error($"Configuration file format error: {ex.Message}");
+        
+        string backupPath = Path.Combine(
+            Path.GetDirectoryName(ConfigFilePath),
+            $"config_invalid_backup_{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.ini"
+        );
+        File.Copy(ConfigFilePath, backupPath);
+        
+        string[] pathParts = backupPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        string backupPathName =  pathParts.Length > 1 
+            ? string.Join("/", pathParts.Skip(Math.Max(0, pathParts.Length - 1)))
+            : backupPath;
+        logger.Warning($"Backup of invalid configuration file created at: {backupPathName}");
+        
+        logger.Warning("Recreating default configuration...");
+        CreateConfiguration();
+    }
+    catch (Exception ex)
+    {
+        logger.Error($"Error loading configuration: {ex.Message}");
+        
+        string backupPath = Path.Combine(
+            Path.GetDirectoryName(ConfigFilePath),
+            $"config_backup_{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.ini"
+        );
+        File.Copy(ConfigFilePath, backupPath);
+        
+        string[] pathParts = backupPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        string backupPathName =  pathParts.Length > 1 
+            ? string.Join("/", pathParts.Skip(Math.Max(0, pathParts.Length - 1)))
+            : backupPath;
+        logger.Warning($"Backup of old configuration file created at: {backupPath}");
+        
+        logger.Warning("Recreating default configuration...");
+        CreateConfiguration();
+    }
+}
+
+// Custom exception for configuration format errors
+public class ConfigurationFormatException : Exception
+{
+    public ConfigurationFormatException(string message) : base(message) { }
+}
+
+private static void ValidateConfigFileFormat(string filePath)
+{
+    logger.Debug("Validating configuration file format...");
+    
+    string[] lines = File.ReadAllLines(filePath);
+    int lineNumber = 0;
+    string currentSection = null;
+
+    foreach (string line in lines)
+    {
+        lineNumber++;
+        string trimmedLine = line.Trim();
+
+        // Skip empty lines and comments
+        if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith(";"))
+            continue;
+
+        // Check for valid section header
+        if (trimmedLine.StartsWith("[") && trimmedLine.EndsWith("]"))
+        {
+            currentSection = trimmedLine.Trim('[', ']');
+            
+            // Validate section exists in expected configuration structure
+            if (!_configStructure.ContainsKey(currentSection))
+            {
+                throw new ConfigurationFormatException(
+                    $"Line {lineNumber}: Unknown configuration section '{currentSection}'"
+                );
+            }
+            continue;
+        }
+
+        // Check for valid key-value pair
+        if (trimmedLine.Contains("="))
+        {
+            if (currentSection == null)
+            {
+                throw new ConfigurationFormatException(
+                    $"Line {lineNumber}: Configuration entry found before any section declaration"
+                );
+            }
+
+            string[] parts = trimmedLine.Split(new[] { '=' }, 2);
+            string key = parts[0].Trim();
+            
+            // Validate key exists in the current section
+            if (!_configStructure[currentSection].ContainsKey(key))
+            {
+                throw new ConfigurationFormatException(
+                    $"Line {lineNumber}: Unknown configuration key '{key}' in section '{currentSection}'"
+                );
+            }
+            continue;
+        }
+
+        // If line doesn't match any expected format
+        throw new ConfigurationFormatException(
+            $"Line {lineNumber}: Invalid configuration file format: {trimmedLine}"
+        );
+    }
+
+    logger.Debug("Configuration file format validated successfully.");
+}
 
     private static void CreateConfiguration()
     {

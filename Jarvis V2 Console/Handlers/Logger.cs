@@ -45,6 +45,10 @@ public class Logger
 
     private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss:fff";
     
+    public static void Cleanup()
+    {
+        InternalLogCache.Clear();
+    }
     public void ChangeLogLevel(LogLevel consoleLevel, LogLevel fileLevel)
     {
         Log(LogLevel.Debug, "Changing log levels...", GetCaller());

@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using Jarvis_V2_Console.Handlers;
 using Newtonsoft.Json.Linq;
 
@@ -102,5 +103,11 @@ class Program
         logger.ChangeLogFilePath(logFilePath);
         
         return logger;
+    }
+
+    private static void Cleanup(Logger logger)
+    {
+        logger.Info("Cleaning up...");
+        Logger.Cleanup();
     }
 }
