@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jarvis V2 Console", "Jarvis V2 Console\Jarvis V2 Console.csproj", "{A7D6475D-8822-4A1F-A021-4714FED8CF39}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jarvis_V2_Console", "Jarvis_V2_Console\Jarvis_V2_Console.csproj", "{A7D6475D-8822-4A1F-A021-4714FED8CF39}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{982E998E-1266-4184-94F1-F142FAC6BAF2}"
 	ProjectSection(SolutionItems) = preProject
