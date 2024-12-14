@@ -99,13 +99,30 @@ public class Logger
     // Writes a log message to a file.
     private void WriteToFile(string logMessage, string caller)
     {
+        string loglevel = "Standard";
         try
         {
-            File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine + caller + Environment.NewLine);
+            loglevel = ConfigManager.GetValue("Logging", "LogLevel");
         }
         catch (Exception ex)
         {
-            // Handle file writing exceptions gracefully.
+            AnsiConsole.MarkupLine("[red]Failed to get log level from configuration. Using default log level.[/]");
+        }
+        
+        try
+        {
+            if (loglevel == "Deep")
+            {
+                File.AppendAllText(LogFilePath,
+                    RemoveMarkup(logMessage) + Environment.NewLine + caller + Environment.NewLine);
+            }
+            else
+            {
+                File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine);
+            }
+        }
+        catch (Exception ex)
+        {
             AnsiConsole.MarkupLine($"[red]Failed to write to log file: {ex.Message}[/]");
         }
     }
