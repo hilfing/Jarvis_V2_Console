@@ -1,4 +1,8 @@
-﻿using Jarvis_V2_Console.Handlers;
+﻿using System.Reflection;
+using Jarvis_V2_Console.Handlers;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Jarvis_V2_Console;
 
@@ -7,12 +11,26 @@ class Program
     static void Main(string[] args)
     {
         Logger logger = new Logger("JarvisAI.Main");
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = "Jarvis_V2_Console.secrets.json";
+
+        string secrets;
+
+        using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+        using (StreamReader reader = new StreamReader(stream))
+        {
+            secrets = reader.ReadToEnd();
+        }
+        
+        JObject json = JObject.Parse(secrets);
+        
+        JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
         
         var handler = new DatabaseHandler(
-            host: "localhost",
-            database: "exampledb",
-            username: "user",
-            password: "password"
+            host: dbCreds["Host"]?.Value<string>() ?? "localhost", 
+            database: dbCreds["Database"]?.Value<string>() ?? "postgres",
+            username: dbCreds["Username"]?.Value<string>() ?? "postgres",
+            password: dbCreds["Password"]?.Value<string>() ?? ""
         );
 
         Task.Run(async () =>
