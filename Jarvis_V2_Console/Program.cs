@@ -2,6 +2,7 @@
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
 using Newtonsoft.Json.Linq;
+using Spectre.Console;
 
 namespace Jarvis_V2_Console;
 
@@ -21,9 +22,10 @@ class Program
             password: dbCreds["Password"]?.Value<string>() ?? ""
         );
 
-        GeneralUtils.VerifyDatabaseConnection(logger, dbHandler);
-        
+        GeneralUtils.VerifyDatabaseConnection(dbHandler);
         logger.Info("All configurations:" + Environment.NewLine + GeneralUtils.GetAllConfigurations().ToString());
+        
+        DisplayWelcomeMessage();
         
         Cleanup(logger, dbHandler);
         
@@ -85,4 +87,37 @@ class Program
 
         return json;
     }
+    
+    public static void DisplayWelcomeMessage()
+    {
+        // Clear the console to start fresh
+        AnsiConsole.Clear();
+
+        // Create a fancy welcome message with a border
+        var panel = new Panel("[bold white]JarvisAI[/] is an AI-powered chatbot and assistant equipped with numerous features designed to make your life easier.")
+            .Border(BoxBorder.Rounded)
+            .Header("[bold green]Welcome to JarvisAI[/] : [bold yellow]Your AI-powered Chatbot and Assistant[/]")
+            .Padding(1, 1)
+            .Expand()
+            .HeaderAlignment(Justify.Center);
+
+        // Display a rich, welcoming message with beautiful formatting
+        AnsiConsole.Write(panel);
+
+        // Add a couple of styled paragraphs to guide the user
+        AnsiConsole.MarkupLine("\n[bold cyan]User Settings[/]: Your personal configurations are stored in [underline]Config.ini[/] and can be easily customized.");
+        AnsiConsole.MarkupLine("[bold magenta]Logs[/]: All activity logs can be found in the [underline]Logs[/] folder for reference.");
+        AnsiConsole.MarkupLine("[bold red]Support[/]: If you need help, please don't hesitate to send a message to our support team.");
+        AnsiConsole.MarkupLine("[bold yellow]Login/Register[/]: You must [underline]log in or register[/] to access all features of JarvisAI.");
+
+        // A final call to action with a styled prompt
+        AnsiConsole.MarkupLine("\n[bold green]Ready to begin? Let's get started with your login or registration![/]");
+        AnsiConsole.MarkupLine("[italic dim]Press [bold cyan]Enter[/] to proceed.[/]");
+    
+        // Pause and wait for user input to proceed
+        Console.ReadLine();
+    }
+
+
+    
 }

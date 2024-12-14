@@ -4,14 +4,16 @@ using Jarvis_V2_Console.Handlers;
 
 namespace Jarvis_V2_Console.Utils;
 
-public class GeneralUtils
+public static class GeneralUtils
 {
+    private static Logger logger = new Logger("JarvisAI.Utils.GeneralUtils");
+    
     public static string RemoveEmptyLines(string lines)
     {
         return Regex.Replace(lines, @"^\s*$\n|\r", string.Empty, RegexOptions.Multiline).TrimEnd();
     }
     
-    public static void VerifyDatabaseConnection(Logger logger, DatabaseHandler dbHandler)
+    public static void VerifyDatabaseConnection(DatabaseHandler dbHandler)
     {
         Task.Run(async () =>
         {
@@ -29,6 +31,7 @@ public class GeneralUtils
     public static string GetAllConfigurations()
     {
         StringBuilder sb = new StringBuilder();
+        logger.Debug("Logging contents of config.ini:");
         var allConfigs = ConfigManager.GetAllConfigurations();
         foreach (var section in allConfigs)
         {
