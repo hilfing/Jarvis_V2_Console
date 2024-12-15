@@ -26,8 +26,6 @@ public static class Program
         );
 
         GeneralUtils.VerifyDatabaseConnection(dbHandler);
-        logger.Info("All configurations:" + Environment.NewLine + GeneralUtils.GetAllConfigurations().ToString());
-        
         UserManager userManager = new UserManager(dbHandler);
         
         DisplayWelcomeMessage();

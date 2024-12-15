@@ -28,22 +28,4 @@ public static class GeneralUtils
         }).GetAwaiter().GetResult();
     }
     
-    public static string GetAllConfigurations()
-    {
-        StringBuilder sb = new StringBuilder();
-        logger.Debug("Logging contents of config.ini:");
-        var allConfigs = ConfigManager.GetAllConfigurations();
-        foreach (var section in allConfigs)
-        {
-            sb.AppendLine($"Section: {section.Key}");
-            foreach (var setting in section.Value)
-            {
-                sb.AppendLine($"  {setting.Key}: {setting.Value}");
-            }
-        }
-        
-        string resultString = RemoveEmptyLines(sb.ToString());
-        return resultString;
-    }
-    
 }

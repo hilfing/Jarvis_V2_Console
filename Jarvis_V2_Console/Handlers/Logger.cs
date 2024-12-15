@@ -1,13 +1,13 @@
-using System.Reflection;
-using System.Text;
-using System.Text.RegularExpressions;
-
 namespace Jarvis_V2_Console.Handlers;
 
 using System;
 using System.Diagnostics;
 using System.IO;
 using Spectre.Console;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
+using Jarvis_V2_Console.Utils;
 
 public class Logger
 {
@@ -208,7 +208,8 @@ public class Logger
         callerInfo.AppendLine($"Source File: {fileName ?? "Unknown"}");
         callerInfo.AppendLine($"Line Number: {(lineNumber > 0 ? lineNumber.ToString() : "Unknown")}");
         
-        return callerInfo.ToString();
+        string resultString = GeneralUtils.RemoveEmptyLines(callerInfo.ToString());
+        return resultString;
     }
     catch (Exception ex)
     {
