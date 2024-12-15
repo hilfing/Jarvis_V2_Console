@@ -201,35 +201,35 @@ public static class Program
         string username = "", password = "", email = "", firstName = "", lastName = "";
         try
         {
-            username = GetValidatedInput(
+            username = InputValidator.GetValidatedInput(
                 prompt: "Username:",
-                validationFunc: ValidateUsername,
+                validationFunc: InputValidator.ValidateUsername,
                 errorMessage: "[red]Invalid username. Must be 3-50 characters long.[/]"
             );
 
-            password = GetValidatedInput(
+            password = InputValidator.GetValidatedInput(
                 prompt: "Password:",
-                validationFunc: ValidatePassword,
+                validationFunc: InputValidator.ValidatePassword,
                 errorMessage:
                 "[red]Invalid password. Must be at least 8 characters with a letter, number, and special character.[/]",
                 isPassword: true
             );
 
-            email = GetValidatedInput(
+            email = InputValidator.GetValidatedInput(
                 prompt: "Email:",
-                validationFunc: ValidateEmail,
+                validationFunc: InputValidator.ValidateEmail,
                 errorMessage: "[red]Invalid email format. Please enter a valid email address.[/]"
             );
 
-            firstName = GetValidatedInput(
+            firstName = InputValidator.GetValidatedInput(
                 prompt: "First Name:",
-                validationFunc: ValidateName,
+                validationFunc: InputValidator.ValidateName,
                 errorMessage: "[red]Invalid first name. Must be 1-50 characters long.[/]"
             );
 
-            lastName = GetValidatedInput(
+            lastName = InputValidator.GetValidatedInput(
                 prompt: "Last Name:",
-                validationFunc: ValidateName,
+                validationFunc: InputValidator.ValidateName,
                 errorMessage: "[red]Invalid last name. Must be 1-50 characters long.[/]"
             );
         }
@@ -245,77 +245,5 @@ public static class Program
         
         return new List<string> { username, password, email, firstName, lastName };
     }
-
-private static string GetValidatedInput(
-    string prompt, 
-    Func<string, bool> validationFunc, 
-    string errorMessage, 
-    bool isPassword = false)
-{
-    while (true)
-    {
-        string input;
-        if (isPassword)
-        {
-            input = Prompt.Password(prompt);
-        }
-        else
-        {
-            input = Prompt.Input<string>(prompt);
-        }
-
-        if (validationFunc(input))
-        {
-            return input;
-        }
-
-        AnsiConsole.MarkupLine(errorMessage);
-        
-        // Option to cancel registration
-        if (!AnsiConsole.Confirm("[yellow]Would you like to try again?[/]"))
-        {
-            throw new OperationCanceledException("Registration cancelled by user.");
-        }
-    }
-}
-
-private static bool ValidateUsername(string username)
-{
-    // Username validation: 3-50 characters, no special characters except underscore
-    return !string.IsNullOrWhiteSpace(username) && 
-           username.Length >= 3 && 
-           username.Length <= 50 &&
-           Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$");
-}
-
-private static bool ValidatePassword(string password)
-{
-    // Password complexity: 
-    // - At least 8 characters
-    // - At least one uppercase letter
-    // - At least one lowercase letter
-    // - At least one number
-    // - At least one special character
-    return !string.IsNullOrWhiteSpace(password) && 
-           password.Length >= 8 && 
-           Regex.IsMatch(password, @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
-}
-
-private static bool ValidateEmail(string email)
-{
-    // Comprehensive email validation
-    return !string.IsNullOrWhiteSpace(email) && 
-           Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$") &&
-           email.Length <= 100;
-}
-
-private static bool ValidateName(string name)
-{
-    // Name validation: 1-50 characters, allows letters, spaces, and hyphens
-    return !string.IsNullOrWhiteSpace(name) && 
-           name.Length >= 1 && 
-           name.Length <= 50 &&
-           Regex.IsMatch(name, @"^[a-zA-Z\-\s]+$");
-}
     
 }
