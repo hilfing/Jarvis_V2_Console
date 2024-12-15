@@ -1,6 +1,5 @@
 using Npgsql;
-using System;
-using System.Threading.Tasks;
+using BCrypt.Net;
 
 namespace Jarvis_V2_Console.Handlers;
 
@@ -8,14 +7,13 @@ public class DatabaseHandler : IAsyncDisposable
 {
     private readonly string _connectionString;
     private bool _disposed = false;
-    Logger logger = new Logger("JarvisAI.Handlers.DatabaseHandler");
+    private Logger logger = new Logger("JarvisAI.Core.DatabaseHandler");
 
-    public DatabaseHandler(string host, string database, string username, string password, int port = 5432)
+    public DatabaseHandler(string host, string database, string username, string password)
     {
-        // Build the connection string
-        _connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database}";
+        _connectionString = $"Host={host};Database={database};Username={username};Password={password}";
+        logger.Info("DatabaseHandler initialized.");
     }
-    
     public async Task<bool> CheckConnectionAsync()
     {
         ThrowIfDisposed();
@@ -117,10 +115,11 @@ public class DatabaseHandler : IAsyncDisposable
     public bool VerifyUserCredentials(string username, string password)
     {
         logger.Debug("Verifying user credentials.");
+        
         const string query = @"
-                SELECT COUNT(1) 
-                FROM users 
-                WHERE username = @username AND password = @password";
+            SELECT password_hash 
+            FROM users 
+            WHERE username = @username";
 
         try
         {
@@ -130,20 +129,58 @@ public class DatabaseHandler : IAsyncDisposable
 
                 using (var command = new NpgsqlCommand(query, connection))
                 {
-                    command.Parameters.AddWithValue("username", NpgsqlTypes.NpgsqlDbType.Varchar, username);
-                    command.Parameters.AddWithValue("password", NpgsqlTypes.NpgsqlDbType.Varchar, password);
+                    command.Parameters.AddWithValue("username", username);
                     
-                    logger.Debug("Executing query to verify user credentials.");
+                    var storedHash = command.ExecuteScalar() as string;
                     
-                    var result = command.ExecuteScalar();
-                    logger.Info("User credentials verified.");
-                    return Convert.ToInt32(result) > 0;
+                    return storedHash != null && 
+                           BCrypt.Net.BCrypt.Verify(password, storedHash);
                 }
             }
         }
         catch (Exception ex)
         {
-            logger.Error("Database error during login verification. Error: " + ex.Message);
+            logger.Error($"Database error during login verification: {ex.Message}");
+            throw;
+        }
+    }
+
+    public bool RegisterUser(string username, string hashedPassword, 
+                              string email, string firstName, string lastName)
+    {
+        logger.Debug("Attempting to register new user in database.");
+        
+        const string query = @"
+            INSERT INTO users 
+            (username, password_hash, email, first_name, last_name, created_at, updated_at) 
+            VALUES 
+            (@username, @password_hash, @email, @first_name, @last_name, @created_at, @updated_at)";
+
+        try
+        {
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("username", username);
+                    command.Parameters.AddWithValue("password_hash", hashedPassword);
+                    command.Parameters.AddWithValue("email", email);
+                    command.Parameters.AddWithValue("first_name", firstName);
+                    command.Parameters.AddWithValue("last_name", lastName);
+                    command.Parameters.AddWithValue("created_at", DateTime.UtcNow);
+                    command.Parameters.AddWithValue("updated_at", DateTime.UtcNow);
+
+                    int rowsAffected = command.ExecuteNonQuery();
+                    
+                    return rowsAffected > 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.Error($"Database error during user registration: {ex.Message}");
             throw;
         }
     }

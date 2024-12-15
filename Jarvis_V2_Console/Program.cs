@@ -8,7 +8,7 @@ using Sharprompt;
 
 namespace Jarvis_V2_Console;
 
-class Program
+public static class Program
 {
     static void Main(string[] args)
     {
@@ -27,7 +27,7 @@ class Program
         GeneralUtils.VerifyDatabaseConnection(dbHandler);
         logger.Info("All configurations:" + Environment.NewLine + GeneralUtils.GetAllConfigurations().ToString());
         
-        UserManager user = new UserManager(dbHandler);
+        UserManager userManager = new UserManager(dbHandler);
         
         DisplayWelcomeMessage();
 
@@ -35,9 +35,29 @@ class Program
         {
             case 1:
                 List<string> loginData = Login(logger);
-                user.Login(loginData[0], loginData[1]);
+                bool loginSuccess = userManager.Login(loginData[0], loginData[1]);
+                if (!loginSuccess)
+                {
+                    AnsiConsole.MarkupLine("[red]Login failed. Please try again.[/]");
+                }
                 break;
             case 2:
+                List<string> registrationData = Register(logger);
+                bool registrationSuccess = userManager.Register(
+                    registrationData[0],  // username
+                    registrationData[1],  // password
+                    registrationData[2],  // email
+                    registrationData[3],  // firstName
+                    registrationData[4]   // lastName
+                );
+                if (registrationSuccess)
+                {
+                    AnsiConsole.MarkupLine("[green]Registration successful![/]");
+                }
+                else
+                {
+                    AnsiConsole.MarkupLine("[red]Registration failed. Please try again.[/]");
+                }
                 break;
             case null:
                 Cleanup(logger, dbHandler);
@@ -45,8 +65,8 @@ class Program
         }
 
         Cleanup(logger, dbHandler);
-        
     }
+
 
     private static Logger SetupLogger()
     {
@@ -170,6 +190,21 @@ class Program
         logger.Debug("User entered password.");
         return new List<string> { username, password };
     }
+    
+    private static List<string> Register(Logger logger)
+    {
+        AnsiConsole.MarkupLine("[bold cyan]Register[/]: Please provide your details.");
+        logger.Debug("User selected Registration option.");
 
+        string username = Prompt.Input<string>("Username:");
+        string password = Prompt.Password("Password:");
+        string email = Prompt.Input<string>("Email:");
+        string firstName = Prompt.Input<string>("First Name:");
+        string lastName = Prompt.Input<string>("Last Name:");
+
+        logger.Debug("User completed registration input.");
+        
+        return new List<string> { username, password, email, firstName, lastName };
+    }
     
 }
