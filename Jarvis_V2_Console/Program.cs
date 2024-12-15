@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
 using Newtonsoft.Json.Linq;
@@ -26,7 +27,13 @@ class Program
         GeneralUtils.VerifyDatabaseConnection(dbHandler);
         logger.Info("All configurations:" + Environment.NewLine + GeneralUtils.GetAllConfigurations().ToString());
         
+        UserManager user = new UserManager(dbHandler);
+        
         DisplayWelcomeMessage();
+        
+        bool check = user.Login("hi", "hi");
+        Console.WriteLine(check);
+        
         
         Cleanup(logger, dbHandler);
         

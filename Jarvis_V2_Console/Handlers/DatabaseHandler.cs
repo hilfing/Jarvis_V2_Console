@@ -15,11 +15,7 @@ public class DatabaseHandler : IAsyncDisposable
         // Build the connection string
         _connectionString = $"Host={host};Port={port};Username={username};Password={password};Database={database}";
     }
-
-    /// <summary>
-    /// Checks the connection to the PostgreSQL database.
-    /// </summary>
-    /// <returns>True if the connection is successful; otherwise, false.</returns>
+    
     public async Task<bool> CheckConnectionAsync()
     {
         ThrowIfDisposed();
@@ -39,12 +35,7 @@ public class DatabaseHandler : IAsyncDisposable
             return false;
         }
     }
-
-    /// <summary>
-    /// Executes a SQL query and returns the result.
-    /// </summary>
-    /// <param name="query">The SQL query to execute.</param>
-    /// <returns>Result of the query as a string (example purpose only).</returns>
+    
     public async Task<string> ExecuteQueryAsync(string query)
     {
         ThrowIfDisposed();
@@ -61,12 +52,14 @@ public class DatabaseHandler : IAsyncDisposable
                     {
                         if (await reader.ReadAsync())
                         {
+                            logger.Info(reader[0].ToString());
                             return reader[0].ToString();
                         }
                     }
                 }
             }
 
+            logger.Warning("No results returned.");
             return "No results returned.";
         }
         catch (Exception ex)
@@ -75,10 +68,7 @@ public class DatabaseHandler : IAsyncDisposable
             return null;
         }
     }
-
-    /// <summary>
-    /// Performs cleanup of database resources and closes any open connections.
-    /// </summary>
+    
     public Task CleanupAsync()
     {
         ThrowIfDisposed();
@@ -105,9 +95,6 @@ public class DatabaseHandler : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Implements async disposal pattern
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (!_disposed)
@@ -119,14 +106,45 @@ public class DatabaseHandler : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// Throws an ObjectDisposedException if the object has been disposed
-    /// </summary>
     private void ThrowIfDisposed()
     {
         if (_disposed)
         {
             throw new ObjectDisposedException(nameof(DatabaseHandler));
+        }
+    }
+    
+    public bool VerifyUserCredentials(string username, string password)
+    {
+        logger.Debug("Verifying user credentials.");
+        const string query = @"
+                SELECT COUNT(1) 
+                FROM users 
+                WHERE username = @username AND password = @password";
+
+        try
+        {
+            using (var connection = new NpgsqlConnection(_connectionString))
+            {
+                connection.Open();
+
+                using (var command = new NpgsqlCommand(query, connection))
+                {
+                    command.Parameters.AddWithValue("username", NpgsqlTypes.NpgsqlDbType.Varchar, username);
+                    command.Parameters.AddWithValue("password", NpgsqlTypes.NpgsqlDbType.Varchar, password);
+                    
+                    logger.Debug("Executing query to verify user credentials.");
+                    
+                    var result = command.ExecuteScalar();
+                    logger.Info("User credentials verified.");
+                    return Convert.ToInt32(result) > 0;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.Error("Database error during login verification. Error: " + ex.Message);
+            throw;
         }
     }
 }
