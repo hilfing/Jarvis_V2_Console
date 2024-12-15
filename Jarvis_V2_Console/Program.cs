@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
@@ -42,7 +43,7 @@ public static class Program
                 }
                 break;
             case 2:
-                List<string> registrationData = Register(logger);
+                List<string> registrationData = Register(logger, dbHandler);
                 bool registrationSuccess = userManager.Register(
                     registrationData[0],  // username
                     registrationData[1],  // password
@@ -191,20 +192,128 @@ public static class Program
         return new List<string> { username, password };
     }
     
-    private static List<string> Register(Logger logger)
+    private static List<string> Register(Logger logger, DatabaseHandler dbhandler)
     {
         AnsiConsole.MarkupLine("[bold cyan]Register[/]: Please provide your details.");
         logger.Debug("User selected Registration option.");
+        string username = "", password = "", email = "", firstName = "", lastName = "";
+        try
+        {
+            username = GetValidatedInput(
+                prompt: "Username:",
+                validationFunc: ValidateUsername,
+                errorMessage: "[red]Invalid username. Must be 3-50 characters long.[/]"
+            );
 
-        string username = Prompt.Input<string>("Username:");
-        string password = Prompt.Password("Password:");
-        string email = Prompt.Input<string>("Email:");
-        string firstName = Prompt.Input<string>("First Name:");
-        string lastName = Prompt.Input<string>("Last Name:");
+            password = GetValidatedInput(
+                prompt: "Password:",
+                validationFunc: ValidatePassword,
+                errorMessage:
+                "[red]Invalid password. Must be at least 8 characters with a letter, number, and special character.[/]",
+                isPassword: true
+            );
+
+            email = GetValidatedInput(
+                prompt: "Email:",
+                validationFunc: ValidateEmail,
+                errorMessage: "[red]Invalid email format. Please enter a valid email address.[/]"
+            );
+
+            firstName = GetValidatedInput(
+                prompt: "First Name:",
+                validationFunc: ValidateName,
+                errorMessage: "[red]Invalid first name. Must be 1-50 characters long.[/]"
+            );
+
+            lastName = GetValidatedInput(
+                prompt: "Last Name:",
+                validationFunc: ValidateName,
+                errorMessage: "[red]Invalid last name. Must be 1-50 characters long.[/]"
+            );
+        }
+        catch (OperationCanceledException ex)
+        {
+            AnsiConsole.MarkupLine("[yellow]Registration cancelled by user.[/]");
+            logger.Warning("User cancelled registration.");
+            Cleanup(logger, dbhandler);
+            Environment.Exit(0);
+        }
 
         logger.Debug("User completed registration input.");
         
         return new List<string> { username, password, email, firstName, lastName };
     }
+
+private static string GetValidatedInput(
+    string prompt, 
+    Func<string, bool> validationFunc, 
+    string errorMessage, 
+    bool isPassword = false)
+{
+    while (true)
+    {
+        string input;
+        if (isPassword)
+        {
+            input = Prompt.Password(prompt);
+        }
+        else
+        {
+            input = Prompt.Input<string>(prompt);
+        }
+
+        if (validationFunc(input))
+        {
+            return input;
+        }
+
+        AnsiConsole.MarkupLine(errorMessage);
+        
+        // Option to cancel registration
+        if (!AnsiConsole.Confirm("[yellow]Would you like to try again?[/]"))
+        {
+            throw new OperationCanceledException("Registration cancelled by user.");
+        }
+    }
+}
+
+private static bool ValidateUsername(string username)
+{
+    // Username validation: 3-50 characters, no special characters except underscore
+    return !string.IsNullOrWhiteSpace(username) && 
+           username.Length >= 3 && 
+           username.Length <= 50 &&
+           Regex.IsMatch(username, @"^[a-zA-Z0-9_]+$");
+}
+
+private static bool ValidatePassword(string password)
+{
+    // Password complexity: 
+    // - At least 8 characters
+    // - At least one uppercase letter
+    // - At least one lowercase letter
+    // - At least one number
+    // - At least one special character
+    return !string.IsNullOrWhiteSpace(password) && 
+           password.Length >= 8 && 
+           Regex.IsMatch(password, @"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$");
+}
+
+private static bool ValidateEmail(string email)
+{
+    // Comprehensive email validation
+    return !string.IsNullOrWhiteSpace(email) && 
+           Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$") &&
+           email.Length <= 100;
+}
+
+private static bool ValidateName(string name)
+{
+    // Name validation: 1-50 characters, allows letters, spaces, and hyphens
+    return !string.IsNullOrWhiteSpace(name) && 
+           name.Length >= 1 && 
+           name.Length <= 50 &&
+           Regex.IsMatch(name, @"^[a-zA-Z\-\s]+$");
+}
     
 }
