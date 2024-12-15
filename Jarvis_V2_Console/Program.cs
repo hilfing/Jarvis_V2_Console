@@ -30,11 +30,20 @@ class Program
         UserManager user = new UserManager(dbHandler);
         
         DisplayWelcomeMessage();
-        
-        bool check = user.Login("hi", "hi");
-        Console.WriteLine(check);
-        
-        
+
+        switch (ChooseOption(logger))
+        {
+            case 1:
+                List<string> loginData = Login(logger);
+                user.Login(loginData[0], loginData[1]);
+                break;
+            case 2:
+                break;
+            case null:
+                Cleanup(logger, dbHandler);
+                return;
+        }
+
         Cleanup(logger, dbHandler);
         
     }
@@ -126,7 +135,7 @@ class Program
         Console.ReadLine();
     }
 
-    public static bool ChooseOption(Logger logger)
+    public static int? ChooseOption(Logger logger)
     {
         // Display the choices to the user
         var choice = Prompt.Select("Select an Option", new[] { "Login", "Register", "Exit" });
@@ -134,22 +143,32 @@ class Program
         switch (choice)
         {
             case "Login":
-                // Login();
-                return true;
+                return 1;
                 break;
             case "Register":
-                // Register();
-                return true;
+                return 2;
                 break;
             case "Exit":
                 AnsiConsole.MarkupLine("[cyan]Exiting... GoodBye!![/]");
                 logger.Info("User decided to Exit at Startup Prompt");
-                return false;
+                return null;
                 break;
             default:
                 logger.Warning("Invalid Choice chosen by User at Startup Prompt");
-                return false;
+                ChooseOption(logger);
+                return null;
         }
+    }
+    
+    private static List<string> Login(Logger logger)
+    {
+        AnsiConsole.MarkupLine("[bold cyan]Login[/]: Please enter your credentials to log in.");
+        logger.Debug("User selected Login option.");
+        string username = Prompt.Input<string>("Username:");
+        logger.Debug($"User entered username: {username}");
+        string password = Prompt.Password("Password:");
+        logger.Debug("User entered password.");
+        return new List<string> { username, password };
     }
 
     
