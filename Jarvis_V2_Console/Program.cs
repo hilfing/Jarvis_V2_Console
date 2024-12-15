@@ -39,6 +39,10 @@ public static class Program
                 {
                     AnsiConsole.MarkupLine("[red]Login failed. Please try again.[/]");
                 }
+                else
+                {
+                    AnsiConsole.MarkupLine("[green]Login successful![/]");
+                }
                 break;
             case 2:
                 List<string> registrationData = Register(logger, dbHandler);
