@@ -22,10 +22,12 @@ public class Logger
     
     protected LogLevel ConsoleLevel { get; set; }
     protected LogLevel FileLevel { get; set; }
+    private static string LogFileName { get; set; } = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log";
     private static string LogFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
     private string LoggerName { get; set; }
     
     protected static StringBuilder InternalLogCache = new StringBuilder();
+
     public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning, LogLevel fileLevel = LogLevel.Debug)
     {
         ConsoleLevel = consoleLevel;
@@ -35,7 +37,6 @@ public class Logger
         string runningDir = AppDomain.CurrentDomain.BaseDirectory;
         string folderName = "Logs";
         string folderPath = Path.Combine(runningDir, folderName);
-
 
         if (!Directory.Exists(folderPath))
         {
@@ -62,23 +63,37 @@ public class Logger
     {
         try
         {
-            LogFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
-            string runningDir = AppDomain.CurrentDomain.BaseDirectory;
-            string folderPath = Path.Combine(runningDir, path);
-            if (!Directory.Exists(folderPath))
+            if (string.IsNullOrWhiteSpace(path))
             {
-                Directory.CreateDirectory(folderPath);
-                File.AppendAllText(LogFilePath, InternalLogCache.ToString());
+                throw new ArgumentException("Log path cannot be null or empty.");
+            }
+            
+            string fullLogFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+            string newLogFilePath = Path.Combine(fullLogFolderPath, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
+            
+            if (Path.GetDirectoryName(LogFilePath) == fullLogFolderPath)
+            {
+                Log(LogLevel.Debug, "Log file path remains unchanged.", GetCaller());
+                return;
+            }
+            
+            Directory.CreateDirectory(fullLogFolderPath);
+            
+            string oldLogFilePath = LogFilePath;
+            
+            LogFilePath = newLogFilePath;
+            
+            if (InternalLogCache.Length > 0)
+            {
+                File.WriteAllText(newLogFilePath, InternalLogCache.ToString());
                 Log(LogLevel.Debug, "Internal log cache written to new log file.", GetCaller());
             }
+            File.Delete(oldLogFilePath);
             Log(LogLevel.Debug, $"Log file path changed to: {LogFilePath}", GetCaller());
-            Log(LogLevel.Debug, "Skipped writing Internal log cache to new log file", GetCaller());
-            
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            Log(LogLevel.Warning, "Invalid file path provided. Log file path remains unchanged.", GetCaller());
-            AnsiConsole.MarkupLine("[red]Invalid file path provided. Log file path remains unchanged.[/]");
+            Log(LogLevel.Warning, $"Error changing log file path: {ex.Message}", GetCaller());
         }
     }
 
