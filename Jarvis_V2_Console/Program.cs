@@ -42,14 +42,14 @@ public static class Program
                 break;
             case 2:
                 List<string> registrationData = Register(logger, dbHandler);
-                bool registrationSuccess = userManager.Register(
+                OperationResult<bool> registrationSuccess = userManager.Register(
                     registrationData[0],  // username
                     registrationData[1],  // password
                     registrationData[2],  // email
                     registrationData[3],  // firstName
                     registrationData[4]   // lastName
                 );
-                if (registrationSuccess)
+                if (registrationSuccess.IsSuccess)
                 {
                     AnsiConsole.MarkupLine("[green]Registration successful![/]");
                 }

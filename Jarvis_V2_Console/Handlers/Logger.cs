@@ -207,6 +207,7 @@ public class Logger
         
         callerInfo.AppendLine($"Source File: {fileName ?? "Unknown"}");
         callerInfo.AppendLine($"Line Number: {(lineNumber > 0 ? lineNumber.ToString() : "Unknown")}");
+        callerInfo.AppendLine("--------------------------------------------------");
         
         string resultString = GeneralUtils.RemoveEmptyLines(callerInfo.ToString());
         return resultString;

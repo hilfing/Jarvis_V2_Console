@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Handlers;
+using Jarvis_V2_Console.Utils;
 using BCrypt.Net;
 
 namespace Jarvis_V2_Console.Core;
@@ -12,11 +13,11 @@ public class UserManager
     {
         {"UserID", null},
         {"Username", null},
-        {"Password", null},
         {"Email", null},
         {"FirstName", null},
         {"LastName", null},
-        {"Role", null}
+        {"Role", null},
+        {"LastLogin", null}
     };
     
     private static bool IsAuthenticated = false;
@@ -30,75 +31,121 @@ public class UserManager
     
     public bool Login(string username, string password)
     {
-        logger.Info("Attempting to verify user credentials.");
+        logger.Info($"Login attempt initiated for username: {username}");
         
-        // Validate input
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        // Input validation
+        if (string.IsNullOrWhiteSpace(username))
         {
-            logger.Warning("Login attempt with invalid credentials.");
+            logger.Warning("Login attempt with empty username.");
             return false;
         }
 
         try
         {
-            bool credentialsVerified = _dbHandler.VerifyUserCredentials(username, password);
+            // Verify credentials
+            var loginResult = _dbHandler.VerifyUserCredentials(username, password);
             
-            if (credentialsVerified)
+            if (loginResult.IsSuccess)
             {
-                logger.Info("User credentials verified successfully.");
-                UserData["Username"] = username;
-                IsAuthenticated = true;
-                return true;
+                logger.Info($"Credentials verified for username: {username}");
+                
+                // Fetch and store user details
+                var detailsResult = FetchUserDetails(username);
+                
+                if (detailsResult.IsSuccess)
+                {
+                    IsAuthenticated = true;
+                    logger.Info($"User {username} logged in successfully.");
+                    return true;
+                }
+                
+                logger.Warning($"Login successful but user details fetch failed for {username}.");
+                return false;
             }
             
-            logger.Warning("User credentials could not be verified.");
+            logger.Warning($"Invalid credentials for username: {username}");
             return false;
         }
         catch (Exception ex)
         {
-            logger.Error($"Login error: {ex.Message}");
+            logger.Error($"Login error for username {username}: {ex.Message}");
             return false;
         }
     }
 
-    public bool Register(string username, string password, string email, 
-                          string firstName, string lastName)
+    public OperationResult<bool> FetchUserDetails(string username)
     {
-        logger.Info("Attempting to register new user.");
-
-        // Input validation
-        if (!ValidateRegistrationInput(username, password, email, firstName, lastName))
-        {
-            logger.Warning("Registration input validation failed.");
-            return false;
-        }
+        logger.Debug($"Attempting to fetch details for username: {username}");
 
         try
         {
-            // Hash the password before storing
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password);
+            // Use DatabaseHandler method to fetch user details
+            var detailsResult = _dbHandler.FetchUserDetailsByUsername(username);
+            
+            if (detailsResult.IsSuccess && detailsResult.Data != null)
+            {
+                var userDetails = detailsResult.Data;
+                
+                // Update static UserData
+                UserData["UserID"] = userDetails.Id.ToString();
+                UserData["Username"] = userDetails.Username;
+                UserData["Email"] = userDetails.Email;
+                UserData["FirstName"] = userDetails.FirstName;
+                UserData["LastName"] = userDetails.LastName;
+                UserData["Role"] = userDetails.Role;
+                UserData["LastLogin"] = userDetails.LastLogin?.ToString();
 
-            bool registrationResult = _dbHandler.RegisterUser(
+                logger.Info($"User details successfully fetched for {username}");
+                return OperationResult<bool>.Success(true);
+            }
+
+            logger.Warning($"Failed to fetch user details for {username}");
+            return OperationResult<bool>.Failure("User details not found");
+        }
+        catch (Exception ex)
+        {
+            logger.Error($"Error fetching user details for {username}: {ex.Message}");
+            return OperationResult<bool>.Failure(ex.Message);
+        }
+    }
+
+    public OperationResult<bool> Register(string username, string password, 
+                                          string email, string firstName, string lastName)
+    {
+        logger.Info($"Registration attempt for username: {username}");
+
+        try
+        {
+            // Validate input
+            var validationResult = ValidateRegistrationInput(username, password, email, firstName, lastName);
+            if (!validationResult)
+            {
+                logger.Warning($"Registration validation failed");
+                return OperationResult<bool>.Failure("Invalid input");
+            }
+
+            // Use DatabaseHandler to register user
+            var registrationResult = _dbHandler.RegisterUser(
                 username, 
-                hashedPassword, 
+                password, 
                 email, 
                 firstName, 
                 lastName
             );
 
-            if (registrationResult)
+            if (registrationResult.IsSuccess)
             {
-                logger.Info("User registered successfully.");
-                return true;
+                logger.Info($"User {username} registered successfully");
+                return OperationResult<bool>.Success(true);
             }
 
-            logger.Warning("User registration failed.");
-            return false;
+            logger.Warning($"Registration failed for {username}.");
+            return registrationResult;
         }
         catch (Exception ex)
         {
-            logger.Error($"Registration error: {ex.Message}");
-            return false;
+            logger.Error($"Registration error for {username}: {ex.Message}");
+            return OperationResult<bool>.Failure(ex.Message);
         }
     }
 
