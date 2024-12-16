@@ -65,14 +65,15 @@ public static class Program
                 client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
                 adminAccessClient =
                     new AdminAccessClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
-                Thread.Sleep(200);
+                adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
+                setupTask.Increment(30);
                 SecureConnectionSetup.EnforceSecureConnection(client);
-                setupTask.Increment(45);
+                setupTask.Increment(15);
             });
 
         DisplayWelcomeMessage();
 
-        adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
+
         adminAccessClient.FetchLogsAsync().GetAwaiter().GetResult();
 
         UserManager userManager = new UserManager(dbHandler);

@@ -42,7 +42,7 @@ public class SecureConnectionSetup
         }
         catch (Exception ex)
         {
-            logger.Error($"Error during secure connection setup: {ex.Message}");
+            logger.Critical($"Error during secure connection setup: {ex.Message}");
             return OperationResult<KeyExchangeResult>.Failure($"Secure connection setup failed: {ex.Message}");
         }
     }
@@ -59,17 +59,14 @@ public class SecureConnectionSetup
             if (!connectionResult.IsSuccess)
             {
                 AnsiConsole.MarkupLine("[red]Secure connection verification failed. Exiting...[/]");
-                logger.Error($"Connection setup failed: {connectionResult.ErrorMessage}");
-                GeneralUtils.Cleanup();
-                Environment.Exit(1);
+                logger.Critical($"Connection setup failed: {connectionResult.ErrorMessage}");
             }
 
             AnsiConsole.MarkupLine("[green]Secure connection established successfully![/]");
         }
         catch (Exception ex)
         {
-            logger.Error($"Unhandled error during secure connection setup: {ex.Message}");
-            Environment.Exit(1);
+            logger.Critical($"Unhandled error during secure connection setup: {ex.Message}");
         }
     }
 }

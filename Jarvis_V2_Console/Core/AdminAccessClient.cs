@@ -35,7 +35,7 @@ public class AdminAccessClient
             var response = await _httpClient.PostAsJsonAsync("/token", request);
             if (!response.IsSuccessStatusCode)
             {
-                logger.Error("Failed to get access token. Status Code: " + response.StatusCode);
+                logger.Critical("Failed to get access token. Status Code: " + response.StatusCode);
                 return OperationResult<bool>.Failure($"Token request failed. Status Code: {response.StatusCode}");
             }
 
@@ -49,12 +49,12 @@ public class AdminAccessClient
                 return OperationResult<bool>.Success(true);
             }
 
-            logger.Error("Failed to get access token. Unexpected response format.");
+            logger.Critical("Failed to get access token. Unexpected response format.");
             return OperationResult<bool>.Failure($"Token request failed. Unexpected response format.");
         }
         catch (Exception e)
         {
-            logger.Error($"Failed to get access token. Exception: {e.Message}");
+            logger.Critical($"Failed to get access token. Exception: {e.Message}");
             return OperationResult<bool>.Failure("Token request failed. Exception: " + e.Message);
         }
     }

@@ -119,6 +119,7 @@ public class Logger
 
         if (level >= LogLevel.Critical)
         {
+            GeneralUtils.Cleanup();
             Environment.Exit(1);
         }
     }
