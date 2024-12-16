@@ -26,7 +26,7 @@ public class SecureConnectionClient
         logger.Info($"Secure Connection Client initialized with base URL: {baseUrl}");
     }
     
-    /// <summary>
+        /// <summary>
         /// Initiate key exchange with the server
         /// </summary>
         public async Task<KeyExchangeResult> InitiateKeyExchangeAsync()
@@ -35,44 +35,49 @@ public class SecureConnectionClient
             {
                 logger.Info("Initiating key exchange");
 
-                using var ecdhClient = new ECDiffieHellmanCng(ECCurve.NamedCurves.nistP384);
-                ecdhClient.KeyDerivationFunction = ECDiffieHellmanKeyDerivationFunction.Hash;
-                ecdhClient.HashAlgorithm = CngAlgorithm.Sha384;
+                using var ecdhClient = ECDiffieHellman.Create();
+                ecdhClient.GenerateKey(ECCurve.NamedCurves.nistP256);
 
-                var clientPublicKey = ecdhClient.PublicKey.ToXmlString();
+                var clientPublicKeyBytes = ecdhClient.PublicKey.ExportSubjectPublicKeyInfo();
+                var clientPublicKey = Convert.ToBase64String(clientPublicKeyBytes);
 
                 var keyExchangeRequest = new
                 {
                     client_public_key = clientPublicKey,
                     client_id = Guid.NewGuid().ToString()
                 };
-
+                
+                
                 logger.Debug($"Sending key exchange request with Client ID: {keyExchangeRequest.client_id}");
 
                 var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/key-exchange", keyExchangeRequest);
+                if (!response.IsSuccessStatusCode)
+                {
+                    logger.Error("Key exchange request failed. Status Code: " + response.StatusCode);
+                    throw new Exception("Status code: " + response.StatusCode);
+                }
                 var content = await response.Content.ReadAsStringAsync();
                 var result = JsonSerializer.Deserialize<KeyExchangeResponse>(content);
 
-                // Server public key processing
-                using var ecdhServer = new ECDiffieHellmanCng();
-                byte[] publicKeyBytes = PemKeyProcessor.ParsePemPublicKey(result.server_public_key);
-                using var importedKey = PemKeyProcessor.ImportPublicKey(publicKeyBytes);
-
-                // Derive shared secret
-                byte[] sharedSecret = ecdhClient.DeriveKeyMaterial(importedKey);
+                byte[] serverPublicKeyBytes = Convert.FromBase64String(result.server_public_key);
+                byte[] sharedSecret = CryptoHandler.DeriveSharedSecret(ecdhClient, serverPublicKeyBytes);
 
                 logger.Info("Key exchange completed successfully");
+                
+                using var importedServerKey = ECDiffieHellman.Create();
+                importedServerKey.ImportSubjectPublicKeyInfo(serverPublicKeyBytes, out _);
 
                 return new KeyExchangeResult
                 {
                     ClientId = result.client_id,
                     DerivedKey = sharedSecret,
-                    ServerPublicKey = ecdhServer.PublicKey
+                    ServerPublicKey = importedServerKey.PublicKey
                 };
             }
             catch (Exception ex)
             {
-                logger.Error("Key exchange failed. Error: " + ex);
+                
+                logger.Error("Key exchange failed. Error: " + ex.Message);
                 throw;
             }
         }

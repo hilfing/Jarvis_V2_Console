@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
@@ -30,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = os.getenv("DB_URL")
+DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNwSZkPewU9zvbcE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -64,7 +65,7 @@ class SecurityUtilities:
     def generate_server_key_pair(db: Session):
         """Generate and store a new server key pair."""
         private_key = ec.generate_private_key(
-            ec.SECP384R1(),
+            ec.SECP256R1(),
             backend=default_backend()
         )
         public_key = private_key.public_key()
@@ -82,7 +83,7 @@ class SecurityUtilities:
                 encryption_algorithm=serialization.NoEncryption()
             ),
             server_public_key=public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
+                encoding=serialization.Encoding.DER,
                 format=serialization.PublicFormat.SubjectPublicKeyInfo
             ),
             is_active='active'
@@ -94,12 +95,15 @@ class SecurityUtilities:
 
     @staticmethod
     def derive_shared_secret(private_key, peer_public_key):
-        """Derive a shared secret using ECDH."""
+        # Explicit exchange
         shared_key = private_key.exchange(ec.ECDH(), peer_public_key)
+        print(f"Initial Shared Key (Base64): {base64.b64encode(shared_key).decode()}")
+
+        # Consistent HKDF
         return HKDF(
             algorithm=hashes.SHA384(),
             length=32,
-            salt=None,
+            salt=b'',
             info=b'handshake data'
         ).derive(shared_key)
 
@@ -114,7 +118,7 @@ class SecurityUtilities:
         encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
 
         hmac_key = os.urandom(32)
-        hmac_obj = hashes.HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
+        hmac_obj = HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
         hmac_obj.update(encrypted_message)
         hmac_digest = hmac_obj.finalize()
 
@@ -135,7 +139,7 @@ class SecurityUtilities:
             hmac_key = base64.b64decode(encrypted_payload['hmac_key'])
 
             # HMAC Verification
-            hmac_obj = hashes.HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
+            hmac_obj = HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
             hmac_obj.update(ciphertext)
             hmac_obj.verify(hmac_digest)
 
@@ -187,34 +191,29 @@ def initiate_key_exchange(
         request: KeyExchangeRequest,
         db: Session = Depends(get_db)
 ):
-    """Initiate secure key exchange with server key rotation."""
     try:
-        # Get active server key
+        logger.info(f"Received client public key: {request.client_public_key}")
+
+        # Deserialize client public key
+        client_public_key_bytes = base64.b64decode(request.client_public_key)
+        client_public_key = serialization.load_der_public_key(
+            client_public_key_bytes,
+            backend=default_backend()
+        )
+        logger.info("Successfully loaded client public key")
+
+        # Get active server key or generate new
         active_server_key = db.query(ServerKeyRotation).filter(
             ServerKeyRotation.is_active == 'active'
         ).first()
 
-        if not active_server_key:
-            # Generate new server key if no active key exists
-            server_private_key, server_public_key, server_key_id = SecurityUtilities.generate_server_key_pair(db)
-        else:
-            # Deserialize existing active server key
-            server_private_key = serialization.load_der_private_key(
-                active_server_key.server_private_key,
-                password=None,
-                backend=default_backend()
-            )
-            server_public_key = serialization.load_pem_public_key(
-                active_server_key.server_public_key,
-                backend=default_backend()
-            )
-            server_key_id = active_server_key.id
-
-        # Deserialize client public key
-        client_public_key = serialization.load_pem_public_key(
-            request.client_public_key.encode(),
+        # Generate new server key pair using SECP256R1
+        server_private_key = ec.generate_private_key(
+            ec.SECP256R1(),
             backend=default_backend()
         )
+        server_public_key = server_private_key.public_key()
+        logger.info(f"Generated new server key pair: {base64.b64encode(server_public_key.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)).decode()}")
 
         # Derive shared secret
         shared_secret = SecurityUtilities.derive_shared_secret(
@@ -222,34 +221,37 @@ def initiate_key_exchange(
             client_public_key
         )
 
+        print(f"Shared secret: {base64.b64encode(shared_secret).decode()}")
+
         # Generate/use provided client ID
         client_id = request.client_id or str(uuid.uuid4())
 
         # Store key exchange details
         key_exchange_record = ClientKeyExchange(
             client_id=client_id,
-            client_public_key=client_public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            ),
-            server_key_id=server_key_id,
+            client_public_key=client_public_key_bytes,  # Store original bytes
+            server_key_id=0,  # You might want to track this differently
             derived_key=shared_secret,
             hmac_key=os.urandom(32)
         )
         db.add(key_exchange_record)
         db.commit()
 
-        logger.info(f"Key exchange initiated for client: {client_id}")
+        # Return server public key in DER format
         return {
             "client_id": client_id,
-            "server_public_key": server_public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            "server_public_key": base64.b64encode(
+                server_public_key.public_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PublicFormat.SubjectPublicKeyInfo
+                )
             ).decode()
         }
+
     except Exception as e:
         logger.error(f"Key Exchange Error: {e}")
-        raise HTTPException(status_code=500, detail="Key exchange failed")
+        logger.error(f"Full exception: {e.with_traceback()}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/verify-connection")
@@ -286,6 +288,8 @@ def verify_connection(
             key_exchange.verification_attempts += 1
             key_exchange.last_verified_at = datetime.utcnow()
             db.commit()
+
+            logger.info(f"Decrypted message: {decrypted_message}")
 
             # Additional verification logic
             if decrypted_message == b"CONNECTION_VERIFICATION_REQUEST":

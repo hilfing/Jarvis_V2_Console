@@ -29,6 +29,30 @@ public static class Program
         UserManager userManager = new UserManager(dbHandler);
         
         DisplayWelcomeMessage();
+        
+        var client = new SecureConnectionClient("http://localhost:8000");
+        try 
+        {
+            Task.Run(async () =>
+            {
+                var keyExchangeResult = await client.InitiateKeyExchangeAsync();
+                bool connectionVerified = await client.VerifyConnectionAsync(keyExchangeResult);
+                if (connectionVerified) 
+                {
+                    AnsiConsole.MarkupLine("[green]Secure connection established successfully![/]");
+                }
+                else 
+                {
+                    AnsiConsole.MarkupLine("[red]Secure connection verification failed. Exiting...[/]");
+                }
+            }).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            logger.Error($"Error during secure connection setup: {ex.Message}");
+            Environment.Exit(1);
+        }
+        Console.WriteLine();
 
         switch (ChooseOption(logger))
         {

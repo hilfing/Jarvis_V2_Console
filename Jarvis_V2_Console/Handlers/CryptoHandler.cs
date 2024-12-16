@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using Jarvis_V2_Console.Models;
 
 
@@ -115,5 +116,39 @@ namespace Jarvis_V2_Console.Handlers;
                 diff |= (uint)(a[i] ^ b[i]);
             }
             return diff == 0;
+        }
+        
+        public static byte[] DeriveSharedSecret(ECDiffieHellman clientPrivateKey, byte[] serverPublicKeyBytes)
+        {
+            try 
+            {
+                // Import server public key
+                using var serverPublicKey = ECDiffieHellman.Create();
+                serverPublicKey.ImportSubjectPublicKeyInfo(serverPublicKeyBytes, out _);
+
+                // Perform key exchange
+                byte[] sharedSecret = clientPrivateKey.DeriveKeyMaterial(serverPublicKey.PublicKey);
+
+                // Diagnostic logging
+                Console.WriteLine($"C# Client - Raw Shared Key: {Convert.ToBase64String(sharedSecret)}");
+
+                // HKDF-like derivation matching Python
+                using var hmac = new HMACSHA384(sharedSecret);
+                byte[] info = Encoding.UTF8.GetBytes("handshake data");
+                byte[] derivedSecret = hmac.ComputeHash(info);
+
+                // Truncate to 32 bytes
+                byte[] finalSecret = new byte[32];
+                Array.Copy(derivedSecret, finalSecret, 32);
+
+                Console.WriteLine($"C# Client - Derived Shared Secret: {Convert.ToBase64String(finalSecret)}");
+
+                return finalSecret;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Key Derivation Error: {ex.Message}");
+                throw;
+            }
         }
     }
