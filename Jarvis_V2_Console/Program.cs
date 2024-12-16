@@ -17,6 +17,7 @@ public static class Program
         
         JObject json = GetSecrets();
         JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
+        JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
         
         var dbHandler = new DatabaseHandler(
             host: dbCreds["Host"]?.Value<string>() ?? "localhost", 
@@ -30,29 +31,8 @@ public static class Program
         
         DisplayWelcomeMessage();
         
-        var client = new SecureConnectionClient("http://localhost:8000");
-        try 
-        {
-            Task.Run(async () =>
-            {
-                var keyExchangeResult = await client.InitiateKeyExchangeAsync();
-                bool connectionVerified = await client.VerifyConnectionAsync(keyExchangeResult);
-                if (connectionVerified) 
-                {
-                    AnsiConsole.MarkupLine("[green]Secure connection established successfully![/]");
-                }
-                else 
-                {
-                    AnsiConsole.MarkupLine("[red]Secure connection verification failed. Exiting...[/]");
-                }
-            }).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            logger.Error($"Error during secure connection setup: {ex.Message}");
-            Environment.Exit(1);
-        }
-        Console.WriteLine();
+        var client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");;
+        SecureConnectionSetup.EnforceSecureConnection(client);
 
         switch (ChooseOption(logger))
         {
