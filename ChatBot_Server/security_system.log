@@ -1,11 +1,1 @@
-2024-12-16 17:03:04,226 - SecureEncryptionSystem - INFO - Secure Encryption System starting up
-2024-12-16 17:03:04,269 - SecureEncryptionSystem - ERROR - Startup key generation failed: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused
-	Is the server running on that host and accepting TCP/IP connections?
-
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
-2024-12-16 17:03:53,171 - SecureEncryptionSystem - INFO - Secure Encryption System shutting down
-2024-12-16 17:03:53,738 - SecureEncryptionSystem - INFO - Secure Encryption System starting up
-2024-12-16 17:03:53,769 - SecureEncryptionSystem - ERROR - Startup key generation failed: (psycopg2.OperationalError) connection to server at "localhost" (127.0.0.1), port 5432 failed: Connection refused
-	Is the server running on that host and accepting TCP/IP connections?
-
-(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2024-12-16 17:36:57,839 - SecureEncryptionSystem - INFO - Secure Encryption System starting up

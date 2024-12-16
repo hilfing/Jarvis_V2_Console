@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = os.getenv("DB_URL", "sqlite:///./secure_encryption_system.db")
+DATABASE_URL = os.getenv("DB_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
