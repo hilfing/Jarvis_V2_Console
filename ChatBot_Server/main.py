@@ -1,22 +1,22 @@
+import base64
+import logging
 import os
 import uuid
-import logging
-import base64
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Depends, Header
-from fastapi.security import APIKeyHeader
-from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.orm import declarative_base
-from pydantic import BaseModel, constr
-
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi import FastAPI
+from pydantic import BaseModel
+from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer
+from sqlalchemy.orm import Session
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 # Enhanced Logging
 logging.basicConfig(
@@ -30,7 +30,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = "postgresql://user:password@localhost/encryption_system"
+DATABASE_URL = os.getenv("DB_URL", "sqlite:///./secure_encryption_system.db")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -354,6 +354,121 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Secure Encryption System shutting down")
+
+
+# Create a router for chat-related endpoints
+chat_router = APIRouter()
+
+
+# Pydantic model for chat request
+class ChatRequest(BaseModel):
+    client_id: str
+    encrypted_payload: dict
+
+
+# Pydantic model for chat response
+class ChatResponse(BaseModel):
+    status: str
+    response_payload: dict = None
+
+
+@chat_router.post("/chat", response_model=ChatResponse)
+def process_encrypted_chat(
+        request: ChatRequest,
+        db: Session = Depends(get_db)
+):
+    """
+    Process an encrypted chat message and return an encrypted response.
+
+    - Validates client connection
+    - Decrypts incoming message
+    - Processes message
+    - Encrypts and returns response
+    """
+    try:
+        # Retrieve key exchange record
+        key_exchange = db.query(ClientKeyExchange).filter(
+            ClientKeyExchange.client_id == request.client_id
+        ).first()
+
+        if not key_exchange:
+            logger.warning(f"Client ID not found for chat: {request.client_id}")
+            raise HTTPException(status_code=401, detail="Invalid client")
+
+        # Check key expiration
+        if SecurityUtilities.is_key_expired(key_exchange.created_at):
+            logger.warning(f"Expired key for chat client: {request.client_id}")
+            db.delete(key_exchange)
+            db.commit()
+            raise HTTPException(status_code=401, detail="Key expired")
+
+        try:
+            # Decrypt the incoming message
+            decrypted_message = SecurityUtilities.decrypt_message(
+                key_exchange.derived_key,
+                request.encrypted_payload
+            )
+
+            # Process the decrypted message
+            processed_response = process_chat_message(decrypted_message)
+
+            # Encrypt the response
+            encrypted_response = SecurityUtilities.encrypt_message(
+                key_exchange.derived_key,
+                processed_response.encode()
+            )
+
+            # Update last interaction
+            key_exchange.last_verified_at = datetime.utcnow()
+            db.commit()
+
+            logger.info(f"Chat processed for client: {request.client_id}")
+            return {
+                "status": "success",
+                "response_payload": encrypted_response
+            }
+
+        except ValueError as decrypt_error:
+            logger.error(f"Decryption error in chat: {decrypt_error}")
+            raise HTTPException(status_code=400, detail="Decryption failed")
+
+    except Exception as e:
+        logger.error(f"Chat Processing Error: {e}")
+        raise HTTPException(status_code=500, detail="Chat processing failed")
+
+
+def process_chat_message(message: bytes) -> str:
+    """
+    Core message processing logic.
+
+    This is a placeholder implementation that you'll customize based on your specific requirements.
+
+    Args:
+        message (bytes): Decrypted message bytes
+
+    Returns:
+        str: Processed response message
+    """
+    try:
+        # Convert bytes to string
+        message_str = message.decode('utf-8')
+
+        # Implement your specific message processing logic here
+        # For example:
+        if message_str.startswith("/help"):
+            return "Available commands: /help, /status"
+        elif message_str.startswith("/status"):
+            return "System is operational"
+        else:
+            return f"Echo: {message_str}"
+
+    except Exception as e:
+        logger.error(f"Message processing error: {e}")
+        return "Error processing message"
+
+
+# Include the router in your main FastAPI app
+app.include_router(chat_router, prefix="/api/v1")
 
 if __name__ == "__main__":
     import uvicorn
