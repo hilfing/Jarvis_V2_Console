@@ -5,7 +5,6 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
-import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import padding
@@ -18,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose.exceptions import JWTError
-from jose import JWTError as JWTErr
+from jose import JWTError as JWTErr, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer
