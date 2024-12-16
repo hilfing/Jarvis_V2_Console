@@ -1,20 +1,30 @@
-using Npgsql;
-using BCrypt.Net;
-using Jarvis_V2_Console.Utils;
 using Jarvis_V2_Console.Models;
+using Jarvis_V2_Console.Utils;
+using Npgsql;
 
 namespace Jarvis_V2_Console.Handlers;
 
 public class DatabaseHandler : IAsyncDisposable
 {
-    private Logger logger = new Logger("JarvisAI.Core.DatabaseHandler");
     private readonly string _connectionString;
     private bool _disposed = false;
+    private Logger logger = new Logger("JarvisAI.Core.DatabaseHandler");
 
     public DatabaseHandler(string host, string database, string username, string password)
     {
         _connectionString = $"Host={host};Database={database};Username={username};Password={password}";
         logger.Info("DatabaseHandler initialized.");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!_disposed)
+        {
+            await CleanupAsync();
+
+            // Suppress finalization
+            GC.SuppressFinalize(this);
+        }
     }
 
     public OperationResult<bool> VerifyUserCredentials(string username, string password)
@@ -35,9 +45,9 @@ public class DatabaseHandler : IAsyncDisposable
                 using (var command = new NpgsqlCommand(query, connection))
                 {
                     command.Parameters.AddWithValue("username", username);
-                    
+
                     var storedHash = command.ExecuteScalar() as string;
-                    
+
                     if (storedHash == null)
                     {
                         logger.Warning($"No user found with username: {username}");
@@ -45,7 +55,7 @@ public class DatabaseHandler : IAsyncDisposable
                     }
 
                     bool isValid = BCrypt.Net.BCrypt.Verify(password, storedHash);
-                    
+
                     if (isValid)
                     {
                         logger.Info($"Credentials verified for username: {username}");
@@ -111,7 +121,7 @@ public class DatabaseHandler : IAsyncDisposable
                             logger.Info($"User details fetched for {username}");
                             return OperationResult<UserDetailsDto>.Success(userDetails);
                         }
-                        
+
                         logger.Warning($"No user found with username: {username}");
                         return OperationResult<UserDetailsDto>.Failure("User not found");
                     }
@@ -160,8 +170,8 @@ public class DatabaseHandler : IAsyncDisposable
         return new NpgsqlConnection(_connectionString);
     }
 
-    public OperationResult<bool> RegisterUser(string username, string password, 
-                                               string email, string firstName, string lastName)
+    public OperationResult<bool> RegisterUser(string username, string password,
+        string email, string firstName, string lastName)
     {
         logger.Debug($"Attempting to register user: {username}");
 
@@ -191,7 +201,7 @@ public class DatabaseHandler : IAsyncDisposable
                     command.Parameters.AddWithValue("updated_at", DateTime.UtcNow);
 
                     int rowsAffected = command.ExecuteNonQuery();
-                    
+
                     if (rowsAffected > 0)
                     {
                         logger.Info($"User {username} registered successfully");
@@ -209,6 +219,7 @@ public class DatabaseHandler : IAsyncDisposable
             return OperationResult<bool>.Failure(ex.Message);
         }
     }
+
     public async Task<bool> CheckConnectionAsync()
     {
         ThrowIfDisposed();
@@ -228,7 +239,7 @@ public class DatabaseHandler : IAsyncDisposable
             return false;
         }
     }
-    
+
     public async Task<string> ExecuteQueryAsync(string query)
     {
         ThrowIfDisposed();
@@ -245,7 +256,6 @@ public class DatabaseHandler : IAsyncDisposable
                     {
                         if (await reader.ReadAsync())
                         {
-                            logger.Info(reader[0].ToString());
                             return reader[0].ToString();
                         }
                     }
@@ -261,7 +271,7 @@ public class DatabaseHandler : IAsyncDisposable
             return null;
         }
     }
-    
+
     public Task CleanupAsync()
     {
         ThrowIfDisposed();
@@ -275,7 +285,7 @@ public class DatabaseHandler : IAsyncDisposable
             NpgsqlConnection.ClearAllPools();
 
             logger.Debug("Database cleanup completed successfully.");
-            
+
             // Mark as disposed
             _disposed = true;
 
@@ -285,17 +295,6 @@ public class DatabaseHandler : IAsyncDisposable
         {
             logger.Critical($"Error during database cleanup: {ex.Message}");
             return Task.CompletedTask;
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (!_disposed)
-        {
-            await CleanupAsync();
-            
-            // Suppress finalization
-            GC.SuppressFinalize(this);
         }
     }
 
