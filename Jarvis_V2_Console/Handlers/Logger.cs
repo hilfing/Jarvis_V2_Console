@@ -1,13 +1,11 @@
-namespace Jarvis_V2_Console.Handlers;
-
-using System;
 using System.Diagnostics;
-using System.IO;
-using Spectre.Console;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Utils;
+using Spectre.Console;
+
+namespace Jarvis_V2_Console.Handlers;
 
 public class Logger
 {
@@ -19,16 +17,13 @@ public class Logger
         Error,
         Critical
     }
-    
-    protected LogLevel ConsoleLevel { get; set; }
-    protected LogLevel FileLevel { get; set; }
-    private static string LogFileName { get; set; } = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log";
-    private static string LogFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
-    private string LoggerName { get; set; }
-    
+
     protected static StringBuilder InternalLogCache = new StringBuilder();
 
-    public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning, LogLevel fileLevel = LogLevel.Debug)
+    private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss:fff";
+
+    public Logger(string loggerName = "JarvisAI", LogLevel consoleLevel = LogLevel.Warning,
+        LogLevel fileLevel = LogLevel.Debug)
     {
         ConsoleLevel = consoleLevel;
         FileLevel = fileLevel;
@@ -44,12 +39,20 @@ public class Logger
         }
     }
 
-    private static readonly string LogTimestampFormat = "yyyy-MM-dd HH:mm:ss:fff";
-    
+    protected LogLevel ConsoleLevel { get; set; }
+    protected LogLevel FileLevel { get; set; }
+    private static string LogFileName { get; set; } = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log";
+
+    private static string LogFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs",
+        $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
+
+    private string LoggerName { get; set; }
+
     public static void Cleanup()
     {
         InternalLogCache.Clear();
     }
+
     public void ChangeLogLevel(LogLevel consoleLevel, LogLevel fileLevel)
     {
         Log(LogLevel.Debug, "Changing log levels...", GetCaller());
@@ -58,7 +61,7 @@ public class Logger
         Log(LogLevel.Debug, $"Console log level set to: {consoleLevel}", GetCaller());
         Log(LogLevel.Debug, $"File log level set to: {fileLevel}", GetCaller());
     }
-    
+
     public void ChangeLogFilePath(string path)
     {
         try
@@ -67,27 +70,28 @@ public class Logger
             {
                 throw new ArgumentException("Log path cannot be null or empty.");
             }
-            
+
             string fullLogFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
             string newLogFilePath = Path.Combine(fullLogFolderPath, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
-            
+
             if (Path.GetDirectoryName(LogFilePath) == fullLogFolderPath)
             {
                 Log(LogLevel.Debug, "Log file path remains unchanged.", GetCaller());
                 return;
             }
-            
+
             Directory.CreateDirectory(fullLogFolderPath);
-            
+
             string oldLogFilePath = LogFilePath;
-            
+
             LogFilePath = newLogFilePath;
-            
+
             if (InternalLogCache.Length > 0)
             {
                 File.WriteAllText(newLogFilePath, InternalLogCache.ToString());
                 Log(LogLevel.Debug, "Internal log cache written to new log file.", GetCaller());
             }
+
             File.Delete(oldLogFilePath);
             Log(LogLevel.Debug, $"Log file path changed to: {LogFilePath}", GetCaller());
         }
@@ -107,6 +111,7 @@ public class Logger
         {
             WriteToFile(logMessage, caller);
         }
+
         if (level >= ConsoleLevel)
         {
             WriteToConsole(logMessage);
@@ -131,14 +136,14 @@ public class Logger
             _ => $"[cyan]{timestamp}[/] | [green]{LoggerName}[/] | {message}"
         };
     }
-    
+
     static string RemoveMarkup(string input)
     {
         // Regex to match Spectre.Console markup tags
         var regex = new Regex(@"\[(?:(?:bold\s*)?[a-z]+)\]|\[/\]", RegexOptions.IgnoreCase);
         return regex.Replace(input, string.Empty);
     }
-    
+
     // Writes a log message to the console.
     private static void WriteToConsole(string logMessage)
     {
@@ -148,7 +153,6 @@ public class Logger
     // Writes a log message to a file.
     private void WriteToFile(string logMessage, string caller)
     {
-        
         try
         {
             if (logMessage.Contains("Error") || logMessage.Contains("CRITICAL") || logMessage.Contains("WARNING"))
@@ -162,7 +166,6 @@ public class Logger
                 File.AppendAllText(LogFilePath, RemoveMarkup(logMessage) + Environment.NewLine);
                 InternalLogCache.AppendLine(RemoveMarkup(logMessage));
             }
-            
         }
         catch (Exception ex)
         {
@@ -173,72 +176,72 @@ public class Logger
 
     private static string GetCaller()
     {
-    try
-    {
-        // Get the stack trace
-        StackTrace stackTrace = new StackTrace(true);
-        
-        // Directly get frame 2
-        StackFrame frame = stackTrace.GetFrame(2);
-        
-        if (frame == null)
+        try
         {
-            return "Frame 2 is null";
+            // Get the stack trace
+            StackTrace stackTrace = new StackTrace(true);
+
+            // Directly get frame 2
+            StackFrame frame = stackTrace.GetFrame(2);
+
+            if (frame == null)
+            {
+                return "Frame 2 is null";
+            }
+
+            MethodBase method = frame.GetMethod();
+
+            if (method == null)
+            {
+                return "Method in frame 2 is null";
+            }
+
+            // Collect detailed information
+            StringBuilder callerInfo = new StringBuilder();
+
+            // Declaring Type Information
+            string declaringTypeName = method.DeclaringType?.FullName ?? "Unknown";
+
+            // Extract method name from declaring type for compiler-generated async methods
+            string methodName = declaringTypeName.Contains("<")
+                ? ExtractMethodNameFromDeclaringType(declaringTypeName)
+                : method.Name;
+
+            // Declaring Type Information
+            callerInfo.AppendLine($"Declaring Type: {declaringTypeName}");
+
+            // Method Name
+            callerInfo.AppendLine($"Method Name: {methodName}");
+
+            // Namespace
+            callerInfo.AppendLine($"Namespace: {method.DeclaringType?.Namespace ?? "Unknown"}");
+
+            // Method Signature
+            callerInfo.AppendLine($"Method Signature: {method}");
+
+            // Source File and Line Number
+            string fileName = GeneralUtils.SimplifyFilePath(frame.GetFileName());
+            int lineNumber = frame.GetFileLineNumber();
+
+            callerInfo.AppendLine($"Source File: {fileName ?? "Unknown"}");
+            callerInfo.AppendLine($"Line Number: {(lineNumber > 0 ? lineNumber.ToString() : "Unknown")}");
+            callerInfo.AppendLine("--------------------------------------------------");
+
+            string resultString = GeneralUtils.RemoveEmptyLines(callerInfo.ToString());
+            return resultString;
         }
-        
-        MethodBase method = frame.GetMethod();
-        
-        if (method == null)
+        catch (Exception ex)
         {
-            return "Method in frame 2 is null";
+            return $"Error retrieving caller information: {ex.Message}";
         }
-        
-        // Collect detailed information
-        StringBuilder callerInfo = new StringBuilder();
-        
-        // Declaring Type Information
-        string declaringTypeName = method.DeclaringType?.FullName ?? "Unknown";
-        
-        // Extract method name from declaring type for compiler-generated async methods
-        string methodName = declaringTypeName.Contains("<") 
-            ? ExtractMethodNameFromDeclaringType(declaringTypeName) 
-            : method.Name;
-        
-        // Declaring Type Information
-        callerInfo.AppendLine($"Declaring Type: {declaringTypeName}");
-        
-        // Method Name
-        callerInfo.AppendLine($"Method Name: {methodName}");
-        
-        // Namespace
-        callerInfo.AppendLine($"Namespace: {method.DeclaringType?.Namespace ?? "Unknown"}");
-        
-        // Method Signature
-        callerInfo.AppendLine($"Method Signature: {method}");
-        
-        // Source File and Line Number
-        string fileName = SimplifyFilePath(frame.GetFileName());
-        int lineNumber = frame.GetFileLineNumber();
-        
-        callerInfo.AppendLine($"Source File: {fileName ?? "Unknown"}");
-        callerInfo.AppendLine($"Line Number: {(lineNumber > 0 ? lineNumber.ToString() : "Unknown")}");
-        callerInfo.AppendLine("--------------------------------------------------");
-        
-        string resultString = GeneralUtils.RemoveEmptyLines(callerInfo.ToString());
-        return resultString;
     }
-    catch (Exception ex)
-    {
-        return $"Error retrieving caller information: {ex.Message}";
-    }
-}
 
 // Helper method to extract method name from compiler-generated type names
     private static string ExtractMethodNameFromDeclaringType(string declaringTypeName)
     {
         // First, try the original pattern with << and >
         int startIndex = declaringTypeName.IndexOf("<<");
-        int endIndex = startIndex >= 0 
+        int endIndex = startIndex >= 0
             ? declaringTypeName.IndexOf(">", startIndex + 2)
             : -1;
 
@@ -249,7 +252,7 @@ public class Logger
 
         // If the first pattern fails, try the alternative pattern with <> and >
         startIndex = declaringTypeName.IndexOf("<");
-        endIndex = startIndex >= 0 
+        endIndex = startIndex >= 0
             ? declaringTypeName.IndexOf(">", startIndex)
             : -1;
 
@@ -261,20 +264,6 @@ public class Logger
         // If no pattern matches, return "Unknown"
         return "Unknown";
     }
-
-// Helper method to simplify file path
-private static string SimplifyFilePath(string fullPath)
-{
-    if (string.IsNullOrEmpty(fullPath))
-        return null;
-    
-    // Split the path and take the last two components
-    string[] pathParts = fullPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-    
-    return pathParts.Length > 1 
-        ? string.Join("/", pathParts.Skip(Math.Max(0, pathParts.Length - 2)))
-        : fullPath;
-}
 
     // Logging methods for specific log levels.
     public void Info(string message) => Log(LogLevel.Info, message, GetCaller());

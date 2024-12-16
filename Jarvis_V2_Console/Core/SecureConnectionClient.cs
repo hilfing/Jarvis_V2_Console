@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Jarvis_V2_Console.Handlers;
-using Jarvis_V2_Console.Models;
+using Jarvis_V2_Console.Models.Encryption;
 using Jarvis_V2_Console.Utils;
 
 namespace Jarvis_V2_Console.Core;
@@ -14,9 +14,9 @@ namespace Jarvis_V2_Console.Core;
 public class SecureConnectionClient
 {
     private static Logger logger = new Logger("JarvisAI.Core.SecureConnectionClient");
+    private static KeyExchangeResult? _currentKeyExchangeResult;
     private readonly string _baseUrl;
     private readonly HttpClient _httpClient;
-    private KeyExchangeResult? _currentKeyExchangeResult;
 
     public SecureConnectionClient(string baseUrl)
     {
@@ -231,9 +231,9 @@ public class SecureConnectionClient
     /// <summary>
     /// Invalidate the current key exchange, forcing a new connection
     /// </summary>
-    public void InvalidateConnection()
+    public static void InvalidateConnection()
     {
-        logger.Info("Invalidating current connection");
+        logger.Info("Invalidating current connection. Encryption sequence has been removed.");
         _currentKeyExchangeResult = null;
     }
 }

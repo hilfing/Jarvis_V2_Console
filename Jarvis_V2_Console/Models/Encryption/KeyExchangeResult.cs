@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 
-namespace Jarvis_V2_Console.Models;
+namespace Jarvis_V2_Console.Models.Encryption;
 
 /// <summary>
 /// Represents the result of a key exchange operation

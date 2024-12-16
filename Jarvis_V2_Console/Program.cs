@@ -1,11 +1,10 @@
 ﻿using System.Reflection;
-using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
 using Newtonsoft.Json.Linq;
-using Spectre.Console;
 using Sharprompt;
+using Spectre.Console;
 
 namespace Jarvis_V2_Console;
 
@@ -41,13 +40,13 @@ public static class Program
 
                 // Retrieving Secrets
                 AnsiConsole.MarkupLine("[green]Step 2:[/] Retrieving Server Credentials...");
-                Thread.Sleep(100); 
+                Thread.Sleep(100);
                 json = GetSecrets();
                 setupTask.Increment(10);
 
                 // Setting up Database Connection
                 AnsiConsole.MarkupLine("[green]Step 3:[/] Establishing Database Connection...");
-                Thread.Sleep(200); 
+                Thread.Sleep(200);
                 JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
                 dbHandler = new DatabaseHandler(
                     host: dbCreds["Host"]?.Value<string>() ?? "localhost",
@@ -87,15 +86,16 @@ public static class Program
                 {
                     AnsiConsole.MarkupLine("[green]Login successful![/]");
                 }
+
                 break;
             case 2:
                 List<string> registrationData = Register(logger, dbHandler);
                 OperationResult<bool> registrationSuccess = userManager.Register(
-                    registrationData[0],  // username
-                    registrationData[1],  // password
-                    registrationData[2],  // email
-                    registrationData[3],  // firstName
-                    registrationData[4]   // lastName
+                    registrationData[0], // username
+                    registrationData[1], // password
+                    registrationData[2], // email
+                    registrationData[3], // firstName
+                    registrationData[4] // lastName
                 );
                 if (registrationSuccess.IsSuccess)
                 {
@@ -105,21 +105,21 @@ public static class Program
                 {
                     AnsiConsole.MarkupLine("[red]Registration failed. Please try again.[/]");
                 }
+
                 break;
             case null:
-                Cleanup(logger, dbHandler);
+                GeneralUtils.Cleanup();
                 return;
         }
 
-        Cleanup(logger, dbHandler);
+        GeneralUtils.Cleanup();
     }
-
 
 
     private static Logger SetupLogger()
     {
         Logger logger = new Logger("JarvisAI.Processes.Main");
-        
+
         // Set log levels based on configuration
         Dictionary<string, Logger.LogLevel> logLevels = new Dictionary<string, Logger.LogLevel>
         {
@@ -139,23 +139,14 @@ public static class Program
         {
             logger.Warning("Invalid log level configuration detected. Using default values.");
         }
-        
+
         // Set log file path based on configuration
         string logFilePath = ConfigManager.GetValue("Logging", "LogFilePath");
         logger.ChangeLogFilePath(logFilePath);
-        
+
         return logger;
     }
 
-    private static void Cleanup(Logger logger, DatabaseHandler dbhandler)
-    {
-        logger.Info("Cleaning up...");
-        Logger.Cleanup();
-        dbhandler.CleanupAsync();
-        dbhandler.DisposeAsync().GetAwaiter().GetResult();
-        logger.Info("Cleanup complete.");
-    }
-    
     private static JObject GetSecrets()
     {
         var assembly = Assembly.GetExecutingAssembly();
@@ -172,14 +163,15 @@ public static class Program
 
         return json;
     }
-    
+
     public static void DisplayWelcomeMessage()
     {
         // Clear the console to start fresh
         AnsiConsole.Clear();
 
         // Create a fancy welcome message with a border
-        var panel = new Panel("[bold white]JarvisAI[/] is an AI-powered chatbot and assistant equipped with numerous features designed to make your life easier.")
+        var panel = new Panel(
+                "[bold white]JarvisAI[/] is an AI-powered chatbot and assistant equipped with numerous features designed to make your life easier.")
             .Border(BoxBorder.Rounded)
             .Header("[bold green]Welcome to JarvisAI[/] : [bold yellow]Your AI-powered Chatbot and Assistant[/]")
             .Padding(1, 1)
@@ -190,15 +182,19 @@ public static class Program
         AnsiConsole.Write(panel);
 
         // Add a couple of styled paragraphs to guide the user
-        AnsiConsole.MarkupLine("\n[bold cyan]User Settings[/]: Your personal configurations are stored in [underline]Config.ini[/] and can be easily customized.");
-        AnsiConsole.MarkupLine("[bold magenta]Logs[/]: All activity logs can be found in the [underline]Logs[/] folder for reference.");
-        AnsiConsole.MarkupLine("[bold red]Support[/]: If you need help, please don't hesitate to send a message to our support team.");
-        AnsiConsole.MarkupLine("[bold yellow]Login/Register[/]: You must [underline]log in or register[/] to access all features of JarvisAI.");
+        AnsiConsole.MarkupLine(
+            "\n[bold cyan]User Settings[/]: Your personal configurations are stored in [underline]Config.ini[/] and can be easily customized.");
+        AnsiConsole.MarkupLine(
+            "[bold magenta]Logs[/]: All activity logs can be found in the [underline]Logs[/] folder for reference.");
+        AnsiConsole.MarkupLine(
+            "[bold red]Support[/]: If you need help, please don't hesitate to send a message to our support team.");
+        AnsiConsole.MarkupLine(
+            "[bold yellow]Login/Register[/]: You must [underline]log in or register[/] to access all features of JarvisAI.");
 
         // A final call to action with a styled prompt
         AnsiConsole.MarkupLine("\n[bold green]Ready to begin? Let's get started with your login or registration![/]");
         AnsiConsole.MarkupLine("[italic dim]Press [bold cyan]Enter[/] to proceed.[/]");
-    
+
         // Pause and wait for user input to proceed
         Console.ReadLine();
     }
@@ -227,7 +223,7 @@ public static class Program
                 return null;
         }
     }
-    
+
     private static List<string> Login(Logger logger)
     {
         AnsiConsole.MarkupLine("[bold cyan]Login[/]: Please enter your credentials to log in.");
@@ -238,7 +234,7 @@ public static class Program
         logger.Debug("User entered password.");
         return new List<string> { username, password };
     }
-    
+
     private static List<string> Register(Logger logger, DatabaseHandler dbhandler)
     {
         AnsiConsole.MarkupLine("[bold cyan]Register[/]: Please provide your details.");
@@ -282,13 +278,12 @@ public static class Program
         {
             AnsiConsole.MarkupLine("[yellow]Registration cancelled by user.[/]");
             logger.Warning("User cancelled registration.");
-            Cleanup(logger, dbhandler);
+            GeneralUtils.Cleanup();
             Environment.Exit(0);
         }
 
         logger.Debug("User completed registration input.");
-        
+
         return new List<string> { username, password, email, firstName, lastName };
     }
-    
 }

@@ -6,9 +6,9 @@ namespace Jarvis_V2_Console.Handlers;
 
 public class DatabaseHandler : IAsyncDisposable
 {
+    private static bool _disposed = false;
+    private static Logger logger = new Logger("JarvisAI.Core.DatabaseHandler");
     private readonly string _connectionString;
-    private bool _disposed = false;
-    private Logger logger = new Logger("JarvisAI.Core.DatabaseHandler");
 
     public DatabaseHandler(string host, string database, string username, string password)
     {
@@ -272,7 +272,7 @@ public class DatabaseHandler : IAsyncDisposable
         }
     }
 
-    public Task CleanupAsync()
+    public static Task CleanupAsync()
     {
         ThrowIfDisposed();
 
@@ -298,7 +298,7 @@ public class DatabaseHandler : IAsyncDisposable
         }
     }
 
-    private void ThrowIfDisposed()
+    private static void ThrowIfDisposed()
     {
         if (_disposed)
         {

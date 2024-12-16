@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Jarvis_V2_Console.Models;
+using Jarvis_V2_Console.Models.Encryption;
 
 namespace Jarvis_V2_Console.Handlers;
 

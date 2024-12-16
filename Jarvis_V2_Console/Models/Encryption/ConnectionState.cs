@@ -1,4 +1,4 @@
-namespace Jarvis_V2_Console.Models;
+namespace Jarvis_V2_Console.Models.Encryption;
 
 /// <summary>
 /// Possible client connection states

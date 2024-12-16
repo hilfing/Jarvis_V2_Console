@@ -1,5 +1,5 @@
 using Jarvis_V2_Console.Core;
-using Jarvis_V2_Console.Models;
+using Jarvis_V2_Console.Models.Encryption;
 using Jarvis_V2_Console.Utils;
 using Spectre.Console;
 
@@ -60,6 +60,7 @@ public class SecureConnectionSetup
             {
                 AnsiConsole.MarkupLine("[red]Secure connection verification failed. Exiting...[/]");
                 logger.Error($"Connection setup failed: {connectionResult.ErrorMessage}");
+                GeneralUtils.Cleanup();
                 Environment.Exit(1);
             }
 
