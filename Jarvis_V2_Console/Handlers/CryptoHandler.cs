@@ -20,12 +20,6 @@ namespace Jarvis_V2_Console.Handlers;
 {
     try
     {
-        // Detailed logging of input parameters
-        logger.Debug($"EncryptMessage called with:");
-        logger.Debug($"Key Length: {key?.Length ?? 0} bytes");
-        logger.Debug($"Message Length: {message?.Length ?? 0} bytes");
-        logger.Debug($"Key (Base64): {Convert.ToBase64String(key)}");
-        logger.Debug($"Message (Base64): {Convert.ToBase64String(message)}");
 
         // Generate random IV
         byte[] iv = new byte[16];
@@ -33,8 +27,6 @@ namespace Jarvis_V2_Console.Handlers;
         {
             rng.GetBytes(iv);
         }
-        logger.Debug($"Generated IV (Base64): {Convert.ToBase64String(iv)}");
-        logger.Debug($"IV Length: {iv.Length} bytes");
 
         // Use AES CBC mode with PKCS7 padding
         using var aes = Aes.Create();
@@ -43,30 +35,17 @@ namespace Jarvis_V2_Console.Handlers;
         aes.Key = key;
         aes.IV = iv;
 
-        logger.Debug($"AES Mode: {aes.Mode}");
-        logger.Debug($"Padding Mode: {aes.Padding}");
-        logger.Debug($"Key for AES (Base64): {Convert.ToBase64String(aes.Key)}");
-
         // Encrypt
         using var encryptor = aes.CreateEncryptor();
         byte[] ciphertext = encryptor.TransformFinalBlock(message, 0, message.Length);
-        
-        logger.Debug($"Ciphertext Length: {ciphertext.Length} bytes");
-        logger.Debug($"Ciphertext (Base64): {Convert.ToBase64String(ciphertext)}");
 
         // Use the first 32 bytes of the key as HMAC key
         byte[] hmacKey = new byte[32];
         Array.Copy(key, hmacKey, Math.Min(key.Length, 32));
-        
-        logger.Debug($"HMAC Key Length: {hmacKey.Length} bytes");
-        logger.Debug($"HMAC Key (Base64): {Convert.ToBase64String(hmacKey)}");
 
         // Compute HMAC using SHA384
         using var hmac = new HMACSHA384(hmacKey);
         byte[] hmacDigest = hmac.ComputeHash(ciphertext);
-        
-        logger.Debug($"HMAC Digest Length: {hmacDigest.Length} bytes");
-        logger.Debug($"HMAC Digest (Base64): {Convert.ToBase64String(hmacDigest)}");
 
         // Prepare payload with detailed logging of encoded values
         var payload = new EncryptedPayload
@@ -76,12 +55,6 @@ namespace Jarvis_V2_Console.Handlers;
             HMAC = Convert.ToBase64String(hmacDigest),
             HMACKey = Convert.ToBase64String(hmacKey)
         };
-
-        logger.Debug("Encryption Payload Details:");
-        logger.Debug($"IV (Base64 Encoded): {payload.IV}");
-        logger.Debug($"Ciphertext (Base64 Encoded): {payload.Ciphertext}");
-        logger.Debug($"HMAC (Base64 Encoded): {payload.HMAC}");
-        logger.Debug($"HMAC Key (Base64 Encoded): {payload.HMACKey}");
 
         return payload;
     }

@@ -23,7 +23,7 @@ public static class GeneralUtils
             if (isConnected)
             {
                 string result = await dbHandler.ExecuteQueryAsync("SELECT NOW();");
-                Console.WriteLine($"DataBase Server Time: {result}");
+                logger.Debug($"DataBase Server Time: {result}");
             }
         }).GetAwaiter().GetResult();
     }
