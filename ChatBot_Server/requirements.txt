@@ -3,3 +3,6 @@ cryptography
 sqlalchemy
 psycopg2-binary
 uvicorn
+python-jose
+passlib[bcrypt]
+python-multipart

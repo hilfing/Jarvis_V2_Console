@@ -1,25 +1,31 @@
 import base64
-import binascii
 import logging
 import os
+import re
 import uuid
 from datetime import datetime, timedelta
 
+import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.primitives import padding
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import FastAPI
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from jose.exceptions import JWTError
+from jose import JWTError as JWTErr
+from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+from typing_extensions import List, Dict, Optional
 
 # Enhanced Logging
 logging.basicConfig(
@@ -33,11 +39,69 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = os.getenv("DB_URL")
+DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNwSZkPewU9zvbcE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
+LOG_LINE_REGEX = re.compile(
+    r"(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - "
+    r"(?P<logger>\w+) - (?P<level>\w+) - (?P<message>.+)"
+)
+
+SECRET_KEY = "secret-key"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+users_db = {
+    os.getenv("ADMIN_NAME", "admin"): {
+        "username": os.getenv("ADMIN_NAME", "admin"),
+        "hashed_password": pwd_context.hash(os.getenv("ADMIN_PASSWORD", "admin")),
+    }}
+
+
+def parse_log_file(file_path: str) -> List[Dict[str, str]]:
+    logs = []
+    try:
+        with open(file_path, "r") as log_file:
+            for line in log_file:
+                match = LOG_LINE_REGEX.match(line.strip())
+                if match:
+                    logs.append(match.groupdict())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Log file not found.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+    return logs
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plaintext password against the hashed password.
+    """
+    return pwd_context.verify(plain_password, hashed_password)
+
+def authenticate_user(username: str, password: str) -> Optional[Dict[str, str]]:
+    """
+    Authenticate a user by verifying their credentials.
+    """
+    user = users_db.get(username)
+    if user and verify_password(password, user["hashed_password"]):
+        return user
+    return None
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    Create a JWT token with the given data and expiration time.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # Database Models
 class ServerKeyRotation(Base):
@@ -256,6 +320,39 @@ def get_db():
     finally:
         db.close()
 
+@app.post("/token")
+async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Real login endpoint for obtaining a JWT token.
+    """
+    user = authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["username"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+    """
+    Validate the JWT token and retrieve the current user.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+        user = users_db.get(username)
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return {"username": username}
+    except JWTError or JWTErr:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
 @app.post("/key-exchange")
 def initiate_key_exchange(
@@ -426,6 +523,13 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Secure Encryption System shutting down")
+
+@app.get("/logs", response_model=List[Dict[str, str]])
+async def get_logs(current_user: dict = Depends(get_current_user)):
+    """
+    Endpoint to fetch logs in JSON format.
+    """
+    return parse_log_file("security_system.log")
 
 
 # Create a router for chat-related endpoints
