@@ -13,26 +13,66 @@ public static class Program
 {
     static void Main(string[] args)
     {
-        Logger logger = SetupLogger();
-        
-        JObject json = GetSecrets();
-        JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
-        JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
-        
-        var dbHandler = new DatabaseHandler(
-            host: dbCreds["Host"]?.Value<string>() ?? "localhost", 
-            database: dbCreds["Database"]?.Value<string>() ?? "postgres",
-            username: dbCreds["Username"]?.Value<string>() ?? "postgres",
-            password: dbCreds["Password"]?.Value<string>() ?? ""
-        );
+        Logger logger = null;
+        JObject json = null;
+        DatabaseHandler dbHandler = null;
+        SecureConnectionClient client = null;
 
-        GeneralUtils.VerifyDatabaseConnection(dbHandler);
-        UserManager userManager = new UserManager(dbHandler);
-        
+        AnsiConsole.Progress()
+            .AutoClear(false)
+            .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
+            .Start(ctx =>
+            {
+                // Create a single progress task
+                var setupTask = ctx.AddTask("[yellow]Initializing Application[/]");
+
+                // Dynamic status updates
+                if (!ctx.IsFinished)
+                {
+                    AnsiConsole.MarkupLine("[blue]Starting setup...[/]");
+                    Thread.Sleep(200); // Simulate initial delay
+                }
+
+                // Setting up Logger
+                AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger...");
+                Thread.Sleep(100);
+                logger = SetupLogger();
+                setupTask.Increment(10);
+
+                // Retrieving Secrets
+                AnsiConsole.MarkupLine("[green]Step 2:[/] Retrieving Server Credentials...");
+                Thread.Sleep(100); 
+                json = GetSecrets();
+                setupTask.Increment(10);
+
+                // Setting up Database Connection
+                AnsiConsole.MarkupLine("[green]Step 3:[/] Establishing Database Connection...");
+                Thread.Sleep(200); 
+                JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
+                dbHandler = new DatabaseHandler(
+                    host: dbCreds["Host"]?.Value<string>() ?? "localhost",
+                    database: dbCreds["Database"]?.Value<string>() ?? "postgres",
+                    username: dbCreds["Username"]?.Value<string>() ?? "postgres",
+                    password: dbCreds["Password"]?.Value<string>() ?? ""
+                );
+                GeneralUtils.VerifyDatabaseConnection(dbHandler);
+                setupTask.Increment(25);
+
+                // Setting up Secure API Connection
+                AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
+                setupTask.Increment(10);
+                JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
+                client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
+                Thread.Sleep(200);
+                SecureConnectionSetup.EnforceSecureConnection(client);
+                setupTask.Increment(45);
+            });
+
+        // Display final success message
+        AnsiConsole.MarkupLine("[bold green]Setup completed successfully![/]");
         DisplayWelcomeMessage();
-        
-        var client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");;
-        SecureConnectionSetup.EnforceSecureConnection(client);
+
+        UserManager userManager = new UserManager(dbHandler);
 
         switch (ChooseOption(logger))
         {
@@ -73,6 +113,7 @@ public static class Program
 
         Cleanup(logger, dbHandler);
     }
+
 
 
     private static Logger SetupLogger()
