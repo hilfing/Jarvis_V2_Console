@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNwSZkPewU9zvbcE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
+DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -103,7 +103,7 @@ class SecurityUtilities:
         return HKDF(
             algorithm=hashes.SHA384(),
             length=32,
-            salt=b'',
+            salt=None,
             info=b'handshake data'
         ).derive(shared_key)
 
@@ -192,7 +192,7 @@ def initiate_key_exchange(
         db: Session = Depends(get_db)
 ):
     try:
-        logger.info(f"Received client public key: {request.client_public_key}")
+        logger.info(f"Received client public key. Client ID: {request.client_id}")
 
         # Deserialize client public key
         client_public_key_bytes = base64.b64decode(request.client_public_key)
@@ -213,7 +213,6 @@ def initiate_key_exchange(
             backend=default_backend()
         )
         server_public_key = server_private_key.public_key()
-        logger.info(f"Generated new server key pair: {base64.b64encode(server_public_key.public_bytes(encoding=serialization.Encoding.DER, format=serialization.PublicFormat.SubjectPublicKeyInfo)).decode()}")
 
         # Derive shared secret
         shared_secret = SecurityUtilities.derive_shared_secret(
@@ -288,8 +287,6 @@ def verify_connection(
             key_exchange.verification_attempts += 1
             key_exchange.last_verified_at = datetime.utcnow()
             db.commit()
-
-            logger.info(f"Decrypted message: {decrypted_message}")
 
             # Additional verification logic
             if decrypted_message == b"CONNECTION_VERIFICATION_REQUEST":

@@ -122,28 +122,45 @@ namespace Jarvis_V2_Console.Handlers;
         {
             try 
             {
-                // Import server public key
+                // For .NET 8+, use DeriveRawSecretAgreement
                 using var serverPublicKey = ECDiffieHellman.Create();
                 serverPublicKey.ImportSubjectPublicKeyInfo(serverPublicKeyBytes, out _);
 
-                // Perform key exchange
-                byte[] sharedSecret = clientPrivateKey.DeriveKeyMaterial(serverPublicKey.PublicKey);
+                // Derive raw shared secret
+                byte[] sharedSecret = clientPrivateKey.DeriveRawSecretAgreement(serverPublicKey.PublicKey);
 
-                // Diagnostic logging
-                Console.WriteLine($"C# Client - Raw Shared Key: {Convert.ToBase64String(sharedSecret)}");
+                // Implement HKDF more closely matching Python's cryptography library
+                // Step 1: Extract - use HMAC with empty salt
+                using var hmac = new HMACSHA384();
+                hmac.Key = new byte[hmac.HashSize / 8]; // Zero-length key
+                byte[] pseudoRandomKey = hmac.ComputeHash(sharedSecret);
 
-                // HKDF-like derivation matching Python
-                using var hmac = new HMACSHA384(sharedSecret);
+                // Step 2: Expand - use HMAC with PRK and info
+                using var expandHmac = new HMACSHA384(pseudoRandomKey);
                 byte[] info = Encoding.UTF8.GetBytes("handshake data");
-                byte[] derivedSecret = hmac.ComputeHash(info);
+        
+                // Perform expansion to generate output keying material
+                byte[] outputKeyingMaterial = new byte[32];
+                byte[] currentBlock = new byte[0];
+        
+                for (int i = 1; currentBlock.Length < outputKeyingMaterial.Length; i++)
+                {
+                    // Concatenate previous block, info, and counter
+                    byte[] input = currentBlock
+                        .Concat(info)
+                        .Concat(new[] { (byte)i })
+                        .ToArray();
+            
+                    // Generate next block
+                    currentBlock = expandHmac.ComputeHash(input);
+            
+                    // Copy to output, not exceeding desired length
+                    int copyLength = Math.Min(currentBlock.Length, outputKeyingMaterial.Length - (i - 1) * currentBlock.Length);
+                    Array.Copy(currentBlock, 0, outputKeyingMaterial, (i - 1) * currentBlock.Length, copyLength);
+                }
+                
 
-                // Truncate to 32 bytes
-                byte[] finalSecret = new byte[32];
-                Array.Copy(derivedSecret, finalSecret, 32);
-
-                Console.WriteLine($"C# Client - Derived Shared Secret: {Convert.ToBase64String(finalSecret)}");
-
-                return finalSecret;
+                return outputKeyingMaterial;
             }
             catch (Exception ex)
             {
