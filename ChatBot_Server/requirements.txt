@@ -2,3 +2,4 @@ fastapi
 cryptography
 sqlalchemy
 psycopg2-binary
+uvicorn
