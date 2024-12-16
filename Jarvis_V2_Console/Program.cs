@@ -71,6 +71,7 @@ public static class Program
                 setupTask.Increment(15);
             });
 
+        Thread.Sleep(1000);
         DisplayWelcomeMessage();
 
 
