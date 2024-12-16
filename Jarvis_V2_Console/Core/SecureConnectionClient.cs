@@ -124,7 +124,8 @@ public class SecureConnectionClient
                     }
                     catch (Exception decryptEx)
                     {
-                        logger.Error("Decryption of verification response failed. Error: " + decryptEx);
+                        logger.Debug(decryptEx.StackTrace);
+                        logger.Error("Decryption of verification response failed.");
                         return false;
                     }
                 }

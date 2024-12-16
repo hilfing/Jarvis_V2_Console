@@ -1,4 +1,5 @@
 import base64
+import binascii
 import logging
 import os
 import uuid
@@ -11,6 +12,7 @@ from cryptography.hazmat.primitives.hmac import HMAC
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives import padding
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -21,7 +23,7 @@ from sqlalchemy.orm import sessionmaker
 
 # Enhanced Logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('security_system.log'),
@@ -31,7 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
+DATABASE_URL = os.getenv("DB_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -58,6 +60,29 @@ class ClientKeyExchange(Base):
     last_verified_at = Column(DateTime, nullable=True)
     verification_attempts = Column(Integer, default=0)
 
+
+def remove_pkcs7_padding(data):
+    """
+    Remove PKCS7 padding from the decrypted data.
+
+    Args:
+        data (bytes): Decrypted data potentially with PKCS7 padding.
+
+    Returns:
+        bytes: Data with padding removed.
+    """
+    padding_length = data[-1]
+
+    # Validate padding
+    if padding_length == 0 or padding_length > 16:
+        raise ValueError("Invalid PKCS7 padding")
+
+    # Check that all padding bytes are correct
+    if data[-padding_length:] != bytes([padding_length] * padding_length):
+        raise ValueError("Invalid PKCS7 padding")
+
+    # Remove padding
+    return data[:-padding_length]
 
 # Security Utilities
 class SecurityUtilities:
@@ -109,30 +134,67 @@ class SecurityUtilities:
 
     @staticmethod
     def encrypt_message(key: bytes, message: bytes) -> dict:
-        """Secure message encryption with IV and HMAC."""
-        iv = os.urandom(16)
-        cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
+        """
+        Secure message encryption with PKCS7 padding, IV, and HMAC.
 
-        padded_data = message + b'\x00' * (16 - len(message) % 16)
-        encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+        Args:
+            key (bytes): Encryption key
+            message (bytes): Message to encrypt
 
-        hmac_key = os.urandom(32)
-        hmac_obj = HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
-        hmac_obj.update(encrypted_message)
-        hmac_digest = hmac_obj.finalize()
+        Returns:
+            dict: Encrypted payload with base64 encoded components
+        """
+        try:
 
-        return {
-            'iv': base64.b64encode(iv).decode(),
-            'ciphertext': base64.b64encode(encrypted_message).decode(),
-            'hmac': base64.b64encode(hmac_digest).decode(),
-            'hmac_key': base64.b64encode(hmac_key).decode()
-        }
+            # Generate IV
+            iv = os.urandom(16)
+
+            # Create cipher with PKCS7 padding
+            cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+            encryptor = cipher.encryptor()
+
+            # Apply PKCS7 padding
+            padder = padding.PKCS7(algorithms.AES.block_size).padder()
+            padded_data = padder.update(message) + padder.finalize()
+
+            # Encrypt
+            encrypted_message = encryptor.update(padded_data) + encryptor.finalize()
+
+            # Use key to derive consistent HMAC key
+            hmac_key = key[:32]  # Use first 32 bytes of key for HMAC
+
+            # Compute HMAC
+            hmac_obj = HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
+            hmac_obj.update(encrypted_message)
+            hmac_digest = hmac_obj.finalize()
+
+            # Return payload
+            payload = {
+                'iv': base64.b64encode(iv).decode('utf-8'),
+                'ciphertext': base64.b64encode(encrypted_message).decode('utf-8'),
+                'hmac': base64.b64encode(hmac_digest).decode('utf-8'),
+                'hmac_key': base64.b64encode(hmac_key).decode('utf-8')
+            }
+
+            return payload
+
+        except Exception as e:
+            logging.error(f"Encryption failed: {e}")
+            logging.error(f"Exception Type: {type(e).__name__}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
+            raise
 
     @staticmethod
     def decrypt_message(key: bytes, encrypted_payload: dict) -> bytes:
-        """Secure message decryption with HMAC verification."""
+        """Secure message decryption with HMAC verification and extensive logging."""
         try:
+
+            # Log all payload details
+            for k, v in encrypted_payload.items():
+                logging.debug(f"Payload {k}: {v}")
+
+            # Decoding payload components
             iv = base64.b64decode(encrypted_payload['iv'])
             ciphertext = base64.b64decode(encrypted_payload['ciphertext'])
             hmac_digest = base64.b64decode(encrypted_payload['hmac'])
@@ -141,15 +203,29 @@ class SecurityUtilities:
             # HMAC Verification
             hmac_obj = HMAC(hmac_key, hashes.SHA384(), backend=default_backend())
             hmac_obj.update(ciphertext)
-            hmac_obj.verify(hmac_digest)
 
+            try:
+                hmac_obj.verify(hmac_digest)
+            except Exception as hmac_error:
+                logging.error(f"HMAC Verification Failed: {hmac_error}")
+                raise
+
+            # Decryption
             cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
             decryptor = cipher.decryptor()
+
             decrypted = decryptor.update(ciphertext) + decryptor.finalize()
 
-            return decrypted.rstrip(b'\x00')
+            # Explicitly remove PKCS7 padding
+            unpadded_message = remove_pkcs7_padding(decrypted)
+
+            return unpadded_message
+
         except Exception as e:
-            logger.error(f"Decryption failed: {e}")
+            logging.error(f"Decryption failed: {e}")
+            logging.error(f"Exception Type: {type(e).__name__}")
+            import traceback
+            logging.error(f"Traceback: {traceback.format_exc()}")
             raise ValueError("Decryption or HMAC verification failed")
 
     @staticmethod

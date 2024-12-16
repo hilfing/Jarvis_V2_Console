@@ -17,85 +17,139 @@ namespace Jarvis_V2_Console.Handlers;
         /// Performs AES encryption with HMAC for message security
         /// </summary>
         public static EncryptedPayload EncryptMessage(byte[] key, byte[] message)
+{
+    try
+    {
+        // Detailed logging of input parameters
+        logger.Debug($"EncryptMessage called with:");
+        logger.Debug($"Key Length: {key?.Length ?? 0} bytes");
+        logger.Debug($"Message Length: {message?.Length ?? 0} bytes");
+        logger.Debug($"Key (Base64): {Convert.ToBase64String(key)}");
+        logger.Debug($"Message (Base64): {Convert.ToBase64String(message)}");
+
+        // Generate random IV
+        byte[] iv = new byte[16];
+        using (var rng = new RNGCryptoServiceProvider())
         {
-            try
-            {
-                using var aes = Aes.Create();
-                aes.Key = key;
-                aes.GenerateIV();
+            rng.GetBytes(iv);
+        }
+        logger.Debug($"Generated IV (Base64): {Convert.ToBase64String(iv)}");
+        logger.Debug($"IV Length: {iv.Length} bytes");
 
-                // Padding
-                int paddedLength = ((message.Length + 15) / 16) * 16;
-                byte[] paddedMessage = new byte[paddedLength];
-                Buffer.BlockCopy(message, 0, paddedMessage, 0, message.Length);
+        // Use AES CBC mode with PKCS7 padding
+        using var aes = Aes.Create();
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.Key = key;
+        aes.IV = iv;
 
-                using var encryptor = aes.CreateEncryptor();
-                byte[] ciphertext = encryptor.TransformFinalBlock(paddedMessage, 0, paddedMessage.Length);
+        logger.Debug($"AES Mode: {aes.Mode}");
+        logger.Debug($"Padding Mode: {aes.Padding}");
+        logger.Debug($"Key for AES (Base64): {Convert.ToBase64String(aes.Key)}");
 
-                // HMAC Generation
-                using var hmac = new HMACSHA384();
-                hmac.Key = GenerateRandomKey(32);
-                byte[] hmacDigest = hmac.ComputeHash(ciphertext);
+        // Encrypt
+        using var encryptor = aes.CreateEncryptor();
+        byte[] ciphertext = encryptor.TransformFinalBlock(message, 0, message.Length);
+        
+        logger.Debug($"Ciphertext Length: {ciphertext.Length} bytes");
+        logger.Debug($"Ciphertext (Base64): {Convert.ToBase64String(ciphertext)}");
 
-                logger.Debug($"Message encrypted successfully. Ciphertext length: {ciphertext.Length}");
+        // Use the first 32 bytes of the key as HMAC key
+        byte[] hmacKey = new byte[32];
+        Array.Copy(key, hmacKey, Math.Min(key.Length, 32));
+        
+        logger.Debug($"HMAC Key Length: {hmacKey.Length} bytes");
+        logger.Debug($"HMAC Key (Base64): {Convert.ToBase64String(hmacKey)}");
 
-                return new EncryptedPayload
-                {
-                    IV = Convert.ToBase64String(aes.IV),
-                    Ciphertext = Convert.ToBase64String(ciphertext),
-                    HMAC = Convert.ToBase64String(hmacDigest),
-                    HMACKey = Convert.ToBase64String(hmac.Key)
-                };
-            }
-            catch (Exception ex)
-            {
-                logger.Error("Encryption failed. Error: " + ex);
-                throw;
-            }
+        // Compute HMAC using SHA384
+        using var hmac = new HMACSHA384(hmacKey);
+        byte[] hmacDigest = hmac.ComputeHash(ciphertext);
+        
+        logger.Debug($"HMAC Digest Length: {hmacDigest.Length} bytes");
+        logger.Debug($"HMAC Digest (Base64): {Convert.ToBase64String(hmacDigest)}");
+
+        // Prepare payload with detailed logging of encoded values
+        var payload = new EncryptedPayload
+        {
+            IV = Convert.ToBase64String(iv),
+            Ciphertext = Convert.ToBase64String(ciphertext),
+            HMAC = Convert.ToBase64String(hmacDigest),
+            HMACKey = Convert.ToBase64String(hmacKey)
+        };
+
+        logger.Debug("Encryption Payload Details:");
+        logger.Debug($"IV (Base64 Encoded): {payload.IV}");
+        logger.Debug($"Ciphertext (Base64 Encoded): {payload.Ciphertext}");
+        logger.Debug($"HMAC (Base64 Encoded): {payload.HMAC}");
+        logger.Debug($"HMAC Key (Base64 Encoded): {payload.HMACKey}");
+
+        return payload;
+    }
+    catch (Exception ex)
+    {
+        logger.Error($"Encryption failed with detailed error: {ex}");
+        logger.Error($"Exception Type: {ex.GetType().FullName}");
+        logger.Error($"Stack Trace: {ex.StackTrace}");
+        throw;
+    }
+}
+
+public static byte[] DecryptMessage(byte[] key, EncryptedPayload payload)
+{
+    try
+    {
+
+        // Decode payload components
+        byte[] iv = Convert.FromBase64String(payload.IV);
+        byte[] ciphertext = Convert.FromBase64String(payload.Ciphertext);
+        byte[] hmacDigest = Convert.FromBase64String(payload.HMAC);
+        byte[] hmacKey = Convert.FromBase64String(payload.HMACKey);
+
+        // HMAC Verification
+        using var hmac = new HMACSHA384(hmacKey);
+        byte[] computedHmac = hmac.ComputeHash(ciphertext);
+
+        if (!ConstantTimeCompare(hmacDigest, computedHmac))
+        {
+            logger.Warning("HMAC verification failed");
+            throw new CryptographicException("HMAC verification failed");
         }
 
-        /// <summary>
-        /// Decrypts an encrypted payload with HMAC verification
-        /// </summary>
-        public static byte[] DecryptMessage(byte[] key, EncryptedPayload payload)
-        {
-            try
-            {
-                byte[] iv = Convert.FromBase64String(payload.IV);
-                byte[] ciphertext = Convert.FromBase64String(payload.Ciphertext);
-                byte[] hmacDigest = Convert.FromBase64String(payload.HMAC);
-                byte[] hmacKey = Convert.FromBase64String(payload.HMACKey);
+        // Decrypt using AES CBC with PKCS7 padding
+        using var aes = Aes.Create();
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+        aes.Key = key;
+        aes.IV = iv;
 
-                // HMAC Verification
-                using var hmac = new HMACSHA384(hmacKey);
-                byte[] computedHmac = hmac.ComputeHash(ciphertext);
+        using var decryptor = aes.CreateDecryptor();
+        byte[] decrypted = decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
 
-                if (!ConstantTimeCompare(hmacDigest, computedHmac))
-                {
-                    logger.Warning("HMAC verification failed");
-                    throw new CryptographicException("HMAC verification failed");
-                }
+        return decrypted;
+    }
+    catch (Exception ex)
+    {
+        logger.Error("Decryption failed. Error: " + ex);
+        logger.Error($"Exception Type: {ex.GetType().FullName}");
+        logger.Error($"Stack Trace: {ex.StackTrace}");
+        throw;
+    }
+}
 
-                using var aes = Aes.Create();
-                aes.Key = key;
-                aes.IV = iv;
 
-                using var decryptor = aes.CreateDecryptor();
-                byte[] decrypted = decryptor.TransformFinalBlock(ciphertext, 0, ciphertext.Length);
+// Constant time comparison method
+private static bool ConstantTimeCompare(byte[] a, byte[] b)
+{
+    if (a == null || b == null || a.Length != b.Length)
+        return false;
 
-                // Remove padding
-                int paddingLength = decrypted[decrypted.Length - 1];
-                Array.Resize(ref decrypted, decrypted.Length - paddingLength);
-
-                logger.Debug($"Message decrypted successfully. Decrypted length: {decrypted.Length}");
-                return decrypted;
-            }
-            catch (Exception ex)
-            {
-                logger.Error("Decryption failed. Error: " + ex);
-                throw;
-            }
-        }
+    uint result = 0;
+    for (int i = 0; i < a.Length; i++)
+    {
+        result |= (uint)(a[i] ^ b[i]);
+    }
+    return result == 0;
+}
 
         private static byte[] GenerateRandomKey(int length)
         {
@@ -103,19 +157,6 @@ namespace Jarvis_V2_Console.Handlers;
             byte[] key = new byte[length];
             rng.GetBytes(key);
             return key;
-        }
-
-        private static bool ConstantTimeCompare(byte[] a, byte[] b)
-        {
-            if (a.Length != b.Length)
-                return false;
-
-            uint diff = 0;
-            for (int i = 0; i < a.Length; i++)
-            {
-                diff |= (uint)(a[i] ^ b[i]);
-            }
-            return diff == 0;
         }
         
         public static byte[] DeriveSharedSecret(ECDiffieHellman clientPrivateKey, byte[] serverPublicKeyBytes)
