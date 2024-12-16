@@ -34,6 +34,7 @@ public static class GeneralUtils
         Logger.Cleanup();
         DatabaseHandler.CleanupAsync();
         SecureConnectionClient.InvalidateConnection();
+        AdminAccessClient.InvalidateClient();
         logger.Info("Cleanup complete.");
     }
 

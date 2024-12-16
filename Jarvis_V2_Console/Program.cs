@@ -16,6 +16,7 @@ public static class Program
         JObject json = null;
         DatabaseHandler dbHandler = null;
         SecureConnectionClient client = null;
+        AdminAccessClient adminAccessClient = null;
 
         AnsiConsole.Progress()
             .AutoClear(false)
@@ -62,14 +63,17 @@ public static class Program
                 setupTask.Increment(10);
                 JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
                 client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
+                adminAccessClient =
+                    new AdminAccessClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
                 Thread.Sleep(200);
                 SecureConnectionSetup.EnforceSecureConnection(client);
                 setupTask.Increment(45);
             });
 
-        // Display final success message
-        AnsiConsole.MarkupLine("[bold green]Setup completed successfully![/]");
         DisplayWelcomeMessage();
+
+        adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
+        adminAccessClient.FetchLogsAsync().GetAwaiter().GetResult();
 
         UserManager userManager = new UserManager(dbHandler);
 

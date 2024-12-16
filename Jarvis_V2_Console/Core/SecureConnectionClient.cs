@@ -15,8 +15,8 @@ public class SecureConnectionClient
 {
     private static Logger logger = new Logger("JarvisAI.Core.SecureConnectionClient");
     private static KeyExchangeResult? _currentKeyExchangeResult;
+    private static HttpClient _httpClient;
     private readonly string _baseUrl;
-    private readonly HttpClient _httpClient;
 
     public SecureConnectionClient(string baseUrl)
     {
@@ -234,6 +234,8 @@ public class SecureConnectionClient
     public static void InvalidateConnection()
     {
         logger.Info("Invalidating current connection. Encryption sequence has been removed.");
+        _currentKeyExchangeResult = null;
+        _httpClient.Dispose();
         _currentKeyExchangeResult = null;
     }
 }
