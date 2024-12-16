@@ -1,19 +1,19 @@
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Models;
 using Jarvis_V2_Console.Utils;
-using Microsoft.Extensions.Logging;
 using Spectre.Console;
 
 namespace Jarvis_V2_Console.Handlers;
 
 public class SecureConnectionSetup
 {
+    private static readonly Logger logger = new Logger("JarvisAI.Handlers.SecureConnectionSetup");
     private readonly SecureConnectionClient _client;
 
-    private static readonly Logger logger = new Logger("JarvisAI.Handlers.SecureConnectionSetup");
-    public SecureConnectionSetup (SecureConnectionClient client)
+    public SecureConnectionSetup(SecureConnectionClient client)
     {
         _client = client;
+        logger.Debug("Secure Connection Setup initialized");
     }
 
     public async Task<OperationResult<KeyExchangeResult>> EstablishSecureConnectionAsync()
@@ -24,10 +24,11 @@ public class SecureConnectionSetup
 
             // Initiate key exchange
             var keyExchangeResult = await _client.InitiateKeyExchangeAsync();
-            
+            logger.Debug("Key exchange Completed");
             // Verify the connection
             bool connectionVerified = await _client.VerifyConnectionAsync(keyExchangeResult);
-            
+            logger.Debug("Connection verification completed");
+
             if (connectionVerified)
             {
                 logger.Info("Secure connection established successfully");
@@ -52,6 +53,7 @@ public class SecureConnectionSetup
         try
         {
             var setup = new SecureConnectionSetup(client);
+            logger.Info("Enforcing secure connection at startup");
             var connectionResult = setup.EstablishSecureConnectionAsync().GetAwaiter().GetResult();
 
             if (!connectionResult.IsSuccess)
