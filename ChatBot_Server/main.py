@@ -122,7 +122,6 @@ class SecurityUtilities:
     def derive_shared_secret(private_key, peer_public_key):
         # Explicit exchange
         shared_key = private_key.exchange(ec.ECDH(), peer_public_key)
-        print(f"Initial Shared Key (Base64): {base64.b64encode(shared_key).decode()}")
 
         # Consistent HKDF
         return HKDF(
@@ -189,10 +188,6 @@ class SecurityUtilities:
     def decrypt_message(key: bytes, encrypted_payload: dict) -> bytes:
         """Secure message decryption with HMAC verification and extensive logging."""
         try:
-
-            # Log all payload details
-            for k, v in encrypted_payload.items():
-                logging.debug(f"Payload {k}: {v}")
 
             # Decoding payload components
             iv = base64.b64decode(encrypted_payload['iv'])
@@ -296,8 +291,6 @@ def initiate_key_exchange(
             client_public_key
         )
 
-        print(f"Shared secret: {base64.b64encode(shared_secret).decode()}")
-
         # Generate/use provided client ID
         client_id = request.client_id or str(uuid.uuid4())
 
@@ -305,12 +298,14 @@ def initiate_key_exchange(
         key_exchange_record = ClientKeyExchange(
             client_id=client_id,
             client_public_key=client_public_key_bytes,  # Store original bytes
-            server_key_id=0,  # You might want to track this differently
+            server_key_id=active_server_key.id,  # You might want to track this differently
             derived_key=shared_secret,
             hmac_key=os.urandom(32)
         )
         db.add(key_exchange_record)
         db.commit()
+
+        logger.info(f"Key exchange completed for client: {client_id}")
 
         # Return server public key in DER format
         return {
@@ -376,7 +371,7 @@ def verify_connection(
                 return {"status": "verified", "verification_payload": verification_response}
             else:
                 logger.warning(f"Invalid verification message from client: {request.client_id}")
-                return {"status": "invalid_verification"}
+                return {"status": "invalid_verification_code"}
 
         except ValueError:
             logger.error(f"Decryption failed for client: {request.client_id}")
