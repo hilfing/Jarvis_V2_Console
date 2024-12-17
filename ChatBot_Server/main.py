@@ -540,7 +540,7 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Secure Encryption System shutting down")
 
-@app.get("/logs", response_model=List[Dict[str, str]])
+@app.get("/logs", response_model=Dict[str,List[Dict[str, str]]])
 async def get_logs(current_user: dict = Depends(get_current_user)):
     """
     Endpoint to fetch logs in JSON format.

@@ -40,11 +40,13 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
+            logger.Debug(content);
             var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(content);
 
             if (tokenResponse != null)
             {
                 _accessToken = tokenResponse.AccessToken;
+                logger.Debug($"Access token received: {_accessToken}");
                 logger.Info("Access token received successfully.");
                 return OperationResult<bool>.Success(true);
             }
@@ -80,6 +82,7 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
+            logger.Debug(content);
             var logs = JsonSerializer.Deserialize<LogsResponse>(content);
 
             if (logs != null && logs.Logs != null)
