@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
 using System.Text.Json;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Models.AdminAccess;
@@ -32,7 +31,7 @@ public class AdminAccessClient
                 new KeyValuePair<string, string>("password", password)
             });
 
-            var response = await _httpClient.PostAsJsonAsync("/token", request);
+            var response = await _httpClient.PostAsync("/token", request);
             if (!response.IsSuccessStatusCode)
             {
                 logger.Critical("Failed to get access token. Status Code: " + response.StatusCode);
