@@ -324,7 +324,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     Real login endpoint for obtaining a JWT token.
     """
+    print(form_data)
+    logger.debug(f"Received token request for user: {form_data.username}")
     user = authenticate_user(form_data.username, form_data.password)
+    print(user)
     if not user:
         raise HTTPException(
             status_code=401,
@@ -335,6 +338,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     access_token = create_access_token(
         data={"sub": user["username"]}, expires_delta=access_token_expires
     )
+    logger.info(f"User {user['username']} authenticated successfully")
     return {"access_token": access_token, "token_type": "bearer"}
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
@@ -529,6 +533,19 @@ async def get_logs(current_user: dict = Depends(get_current_user)):
     Endpoint to fetch logs in JSON format.
     """
     return parse_log_file("security_system.log")
+
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint.
+    """
+    try:
+        with SessionLocal() as test_session:
+            test_session.execute("SELECT 1")
+        return {"status": "ok", "db_status": "connected"}
+    except Exception as db_error:
+        logger.error(f"Database connection failed: {db_error}")
+        return {"status": "error", "db_status": "disconnected"}
 
 
 # Create a router for chat-related endpoints
