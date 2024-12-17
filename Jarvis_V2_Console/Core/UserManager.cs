@@ -103,6 +103,7 @@ public class UserManager
                 UserData["Email"] = userDetails.Email;
                 UserData["FirstName"] = userDetails.FirstName;
                 UserData["LastName"] = userDetails.LastName;
+                UserData["Role"] = userDetails.Role;
                 UserData["LastLogin"] = userDetails.LastLogin?.ToString();
 
                 logger.Info($"User details successfully fetched for {username}");
