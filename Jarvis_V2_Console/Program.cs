@@ -34,7 +34,7 @@ public static class Program
                 }
 
                 // Setting up Logger
-                AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger...");
+                AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger and reading Configuration files...");
                 Thread.Sleep(100);
                 logger = SetupLogger();
                 setupTask.Increment(10);
@@ -56,22 +56,21 @@ public static class Program
                     password: dbCreds["Password"]?.Value<string>() ?? ""
                 );
                 GeneralUtils.VerifyDatabaseConnection(dbHandler);
-                setupTask.Increment(25);
+                setupTask.Increment(20);
 
                 // Setting up Secure API Connection
                 AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
-                setupTask.Increment(10);
                 JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
                 string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000";
                 client = new SecureConnectionClient(baseUrl);
                 adminAccessClient =
                     new AdminAccessClient(baseUrl);
                 GeneralUtils.VerifyServerConnection(baseUrl);
-                setupTask.Increment(15);
+                setupTask.Increment(20);
                 adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
-                setupTask.Increment(15);
+                setupTask.Increment(20);
                 SecureConnectionSetup.EnforceSecureConnection(client);
-                setupTask.Increment(15);
+                setupTask.Increment(20);
             });
 
         Thread.Sleep(1000);
