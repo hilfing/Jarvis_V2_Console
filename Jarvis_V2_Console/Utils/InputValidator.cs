@@ -43,7 +43,7 @@ public static class InputValidator
             }
 
             logger.Info(
-                $"Input Validation Error: \nType: {validationFunc.Method.Name} | Input: {input} | Error: {errorMessage}");
+                $"Input Validation Error: Type: [ {validationFunc.Method.Name} | Input: {input} | Error: {errorMessage} ]");
             AnsiConsole.MarkupLine(errorMessage);
 
             // Option to cancel registration
