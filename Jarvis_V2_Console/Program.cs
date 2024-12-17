@@ -190,31 +190,50 @@ public static class Program
         // Clear the console to start fresh
         AnsiConsole.Clear();
 
-        // Create a fancy welcome message with a border
-        var panel = new Panel(
-                "[bold white]JarvisAI[/] is an AI-powered chatbot and assistant equipped with numerous features designed to make your life easier.")
-            .Border(BoxBorder.Rounded)
-            .Header("[bold green]Welcome to JarvisAI[/] : [bold yellow]Your AI-powered Chatbot and Assistant[/]")
-            .Padding(1, 1)
-            .Expand()
-            .HeaderAlignment(Justify.Center);
+        // Initial welcome text
+        string welcomeText =
+            "JarvisAI is an AI-powered chatbot and assistant equipped with numerous features designed to make your life easier.";
 
-        // Display a rich, welcoming message with beautiful formatting
-        AnsiConsole.Write(panel);
+        // Create a Live display for the welcome panel
+        AnsiConsole.Live(new Panel(""))
+            .Start(ctx =>
+            {
+                // Typing effect for welcome text
+                for (int i = 1; i <= welcomeText.Length; i++)
+                {
+                    // Create a new panel with progressively longer text
+                    var panel = new Panel(welcomeText.Substring(0, i))
+                        .Border(BoxBorder.Rounded)
+                        .Header(
+                            "[bold green]Welcome to JarvisAI[/] : [bold yellow]Your AI-powered Chatbot and Assistant[/]")
+                        .Padding(1, 1)
+                        .Expand()
+                        .HeaderAlignment(Justify.Center);
 
-        // Add a couple of styled paragraphs to guide the user
+                    // Update the live context with new panel
+                    ctx.UpdateTarget(panel);
+
+                    // Control typing speed
+                    Thread.Sleep(20);
+                }
+            });
+
         AnsiConsole.MarkupLine(
             "\n[bold cyan]User Settings[/]: Your personal configurations are stored in [underline]Config.ini[/] and can be easily customized.");
+        Thread.Sleep(500);
         AnsiConsole.MarkupLine(
             "[bold magenta]Logs[/]: All activity logs can be found in the [underline]Logs[/] folder for reference.");
+        Thread.Sleep(500);
         AnsiConsole.MarkupLine(
             "[bold red]Support[/]: If you need help, please don't hesitate to send a message to our support team.");
+        Thread.Sleep(500);
         AnsiConsole.MarkupLine(
             "[bold yellow]Login/Register[/]: You must [underline]log in or register[/] to access all features of JarvisAI.");
+        Thread.Sleep(1000);
 
-        // A final call to action with a styled prompt
         AnsiConsole.MarkupLine("\n[bold green]Ready to begin? Let's get started with your login or registration![/]");
         AnsiConsole.MarkupLine("[italic dim]Press [bold cyan]Enter[/] to proceed.[/]");
+
 
         // Pause and wait for user input to proceed
         Console.ReadLine();
