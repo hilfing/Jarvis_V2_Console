@@ -40,13 +40,11 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            logger.Debug(content);
             var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(content);
 
             if (tokenResponse != null)
             {
                 _accessToken = tokenResponse.AccessToken;
-                logger.Debug($"Access token received: {_accessToken}");
                 logger.Info("Access token received successfully.");
                 return OperationResult<bool>.Success(true);
             }
@@ -70,6 +68,7 @@ public class AdminAccessClient
         }
 
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        logger.Debug("Access Token Found. Fetching logs...");
 
         try
         {
@@ -82,8 +81,8 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            logger.Debug(content);
             var logs = JsonSerializer.Deserialize<LogsResponse>(content);
+            logger.Debug("Logs fetched successfully.");
 
             if (logs != null && logs.Logs != null)
             {
@@ -92,6 +91,7 @@ public class AdminAccessClient
                 await File.WriteAllTextAsync(filePath,
                     JsonSerializer.Serialize(logs, new JsonSerializerOptions { WriteIndented = true }));
                 AnsiConsole.MarkupLine($"[green]Logs saved to [bold]{GeneralUtils.SimplifyFilePath(filePath)}[/].[/]");
+                logger.Info($"Logs saved to {GeneralUtils.SimplifyFilePath(filePath)}");
                 return OperationResult<bool>.Success(true);
             }
             else

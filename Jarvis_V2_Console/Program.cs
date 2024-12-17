@@ -67,7 +67,9 @@ public static class Program
                     new AdminAccessClient(baseUrl);
                 GeneralUtils.VerifyServerConnection(baseUrl);
                 setupTask.Increment(20);
-                adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
+                string? adminUsername = apiCreds["AdminUsername"]?.Value<string>() ?? "admin";
+                string? adminPassword = apiCreds["AdminPassword"]?.Value<string>() ?? "admin";
+                adminAccessClient.GetAccessTokenAsync(adminUsername, adminPassword).GetAwaiter().GetResult();
                 setupTask.Increment(20);
                 SecureConnectionSetup.EnforceSecureConnection(client);
                 setupTask.Increment(20);
