@@ -1,38 +1,49 @@
 using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
-using BCrypt.Net;
 
 namespace Jarvis_V2_Console.Core;
 
 public class UserManager
 {
-    private Logger logger = new Logger("JarvisAI.Core.UserManager");
-    
     private static Dictionary<string, string?> UserData = new Dictionary<string, string?>
     {
-        {"UserID", null},
-        {"Username", null},
-        {"Email", null},
-        {"FirstName", null},
-        {"LastName", null},
-        {"Role", null},
-        {"LastLogin", null}
+        { "UserID", null },
+        { "Username", null },
+        { "Email", null },
+        { "FirstName", null },
+        { "LastName", null },
+        { "Role", null },
+        { "LastLogin", null }
     };
-    
+
     private static bool IsAuthenticated = false;
     private readonly DatabaseHandler _dbHandler;
-    
+    private Logger logger = new Logger("JarvisAI.Core.UserManager");
+
     public UserManager(DatabaseHandler dbHandler)
     {
         _dbHandler = dbHandler;
         logger.Info("UserManager initialized.");
     }
-    
-    public bool Login(string username, string password)
+
+    public bool Login(string username, string password, bool reg = false)
     {
         logger.Info($"Login attempt initiated for username: {username}");
-        
+
+        if (reg)
+        {
+            logger.Debug("Registration flag detected. Skipping login verification.");
+            logger.Info($"Login Confirmed for User: {username}");
+            return true;
+        }
+
+        if (IsAuthenticated)
+        {
+            logger.Warning("User already authenticated.");
+            return false;
+        }
+
         // Input validation
         if (string.IsNullOrWhiteSpace(username))
         {
@@ -44,25 +55,25 @@ public class UserManager
         {
             // Verify credentials
             var loginResult = _dbHandler.VerifyUserCredentials(username, password);
-            
+
             if (loginResult.IsSuccess)
             {
                 logger.Info($"Credentials verified for username: {username}");
-                
+
                 // Fetch and store user details
                 var detailsResult = FetchUserDetails(username);
-                
+
                 if (detailsResult.IsSuccess)
                 {
                     IsAuthenticated = true;
                     logger.Info($"User {username} logged in successfully.");
                     return true;
                 }
-                
+
                 logger.Warning($"Login successful but user details fetch failed for {username}.");
                 return false;
             }
-            
+
             logger.Warning($"Invalid credentials for username: {username}");
             return false;
         }
@@ -81,18 +92,17 @@ public class UserManager
         {
             // Use DatabaseHandler method to fetch user details
             var detailsResult = _dbHandler.FetchUserDetailsByUsername(username);
-            
+
             if (detailsResult.IsSuccess && detailsResult.Data != null)
             {
                 var userDetails = detailsResult.Data;
-                
+
                 // Update static UserData
                 UserData["UserID"] = userDetails.Id.ToString();
                 UserData["Username"] = userDetails.Username;
                 UserData["Email"] = userDetails.Email;
                 UserData["FirstName"] = userDetails.FirstName;
                 UserData["LastName"] = userDetails.LastName;
-                UserData["Role"] = userDetails.Role;
                 UserData["LastLogin"] = userDetails.LastLogin?.ToString();
 
                 logger.Info($"User details successfully fetched for {username}");
@@ -109,8 +119,8 @@ public class UserManager
         }
     }
 
-    public OperationResult<bool> Register(string username, string password, 
-                                          string email, string firstName, string lastName)
+    public OperationResult<bool> Register(string username, string password,
+        string email, string firstName, string lastName)
     {
         logger.Info($"Registration attempt for username: {username}");
 
@@ -126,16 +136,17 @@ public class UserManager
 
             // Use DatabaseHandler to register user
             var registrationResult = _dbHandler.RegisterUser(
-                username, 
-                password, 
-                email, 
-                firstName, 
+                username,
+                password,
+                email,
+                firstName,
                 lastName
             );
 
             if (registrationResult.IsSuccess)
             {
                 logger.Info($"User {username} registered successfully");
+                Login(username, password, true);
                 return OperationResult<bool>.Success(true);
             }
 
@@ -149,8 +160,8 @@ public class UserManager
         }
     }
 
-    private bool ValidateRegistrationInput(string username, string password, 
-                                           string email, string firstName, string lastName)
+    private bool ValidateRegistrationInput(string username, string password,
+        string email, string firstName, string lastName)
     {
         // Username validation
         if (string.IsNullOrWhiteSpace(username) || username.Length < 3 || username.Length > 50)
@@ -160,8 +171,8 @@ public class UserManager
         }
 
         // Password complexity check
-        if (string.IsNullOrWhiteSpace(password) || 
-            password.Length < 8 || 
+        if (string.IsNullOrWhiteSpace(password) ||
+            password.Length < 8 ||
             !Regex.IsMatch(password, @"^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$"))
         {
             logger.Warning("Password does not meet complexity requirements.");
@@ -169,7 +180,7 @@ public class UserManager
         }
 
         // Email validation
-        if (string.IsNullOrWhiteSpace(email) || 
+        if (string.IsNullOrWhiteSpace(email) ||
             !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
         {
             logger.Warning("Invalid email format.");
