@@ -30,6 +30,7 @@ public class AdminAccessClient
                 new KeyValuePair<string, string>("username", username),
                 new KeyValuePair<string, string>("password", password)
             });
+            logger.Info("Requesting access token...");
 
             var response = await _httpClient.PostAsync("/token", request);
             if (!response.IsSuccessStatusCode)

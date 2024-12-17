@@ -324,10 +324,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     Real login endpoint for obtaining a JWT token.
     """
-    print(form_data)
     logger.debug(f"Received token request for user: {form_data.username}")
     user = authenticate_user(form_data.username, form_data.password)
-    print(user)
     if not user:
         raise HTTPException(
             status_code=401,
