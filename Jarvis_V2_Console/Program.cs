@@ -18,6 +18,8 @@ public static class Program
         SecureConnectionClient client = null;
         AdminAccessClient adminAccessClient = null;
 
+        AnsiConsole.Clear();
+        AnsiConsole.Write(new FigletText("JarvisAI V2").Color(Color.Green).Centered());
         AnsiConsole.Progress()
             .AutoClear(false)
             .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
@@ -75,11 +77,13 @@ public static class Program
                 setupTask.Increment(20);
             });
 
-        Thread.Sleep(1000);
+        AnsiConsole.Status().Start("Loading JarvisAI...", ctx =>
+        {
+            ctx.Spinner(Spinner.Known.Star);
+            Thread.Sleep(2000);
+        });
+
         DisplayWelcomeMessage();
-
-
-        adminAccessClient.FetchLogsAsync().GetAwaiter().GetResult();
 
         UserManager userManager = new UserManager(dbHandler);
 
