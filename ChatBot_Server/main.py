@@ -63,7 +63,7 @@ users_db = {
     }}
 
 
-def parse_log_file(file_path: str) -> List[Dict[str, str]]:
+def parse_log_file(file_path: str) -> Dict[str,List[Dict[str, str]]]:
     logs = []
     try:
         with open(file_path, "r") as log_file:
@@ -75,7 +75,8 @@ def parse_log_file(file_path: str) -> List[Dict[str, str]]:
         raise HTTPException(status_code=404, detail="Log file not found.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-    return logs
+    final = {"logs": logs}
+    return final
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
