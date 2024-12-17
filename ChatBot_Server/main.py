@@ -24,6 +24,8 @@ from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Int
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 from typing_extensions import List, Dict, Optional
 
 # Enhanced Logging
@@ -310,6 +312,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
+class SuppressLogMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path == "/health":
+            # Suppress logs
+            import logging
+            logging.getLogger("uvicorn.access").disabled = True
+        else:
+            import logging
+            logging.getLogger("uvicorn.access").disabled = False
+        return await call_next(request)
+
+app.add_middleware(SuppressLogMiddleware)
 
 # Database Dependency
 def get_db():

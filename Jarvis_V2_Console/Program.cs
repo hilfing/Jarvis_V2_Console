@@ -62,11 +62,14 @@ public static class Program
                 AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
                 setupTask.Increment(10);
                 JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
-                client = new SecureConnectionClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
+                string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000";
+                client = new SecureConnectionClient(baseUrl);
                 adminAccessClient =
-                    new AdminAccessClient(apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000");
+                    new AdminAccessClient(baseUrl);
+                GeneralUtils.VerifyServerConnection(baseUrl);
+                setupTask.Increment(15);
                 adminAccessClient.GetAccessTokenAsync("admin", "admin").GetAwaiter().GetResult();
-                setupTask.Increment(30);
+                setupTask.Increment(15);
                 SecureConnectionSetup.EnforceSecureConnection(client);
                 setupTask.Increment(15);
             });

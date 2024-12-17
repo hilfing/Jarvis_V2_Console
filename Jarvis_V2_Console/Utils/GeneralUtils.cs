@@ -52,4 +52,24 @@ public static class GeneralUtils
             ? string.Join("/", pathParts.Skip(Math.Max(0, pathParts.Length - 2)))
             : fullPath;
     }
+    
+    public static void VerifyServerConnection(string BaseUrl)
+    {
+        Task.Run(async () =>
+        {
+            HttpClient httpClient = new HttpClient();
+            httpClient.BaseAddress = new Uri(BaseUrl);
+            logger.Info($"Verifying server connection to {BaseUrl}...");
+            var response = await httpClient.GetAsync("/health");
+            string responseContent = await response.Content.ReadAsStringAsync();
+            if (!response.IsSuccessStatusCode || !responseContent.Contains("ok"))
+            {
+                logger.Critical($"Failed to connect to server. Status Code: {response.StatusCode}");
+            }
+            else
+            {
+                logger.Info("Server connection verified successfully.");
+            }
+        }).GetAwaiter().GetResult();
+    }
 }
