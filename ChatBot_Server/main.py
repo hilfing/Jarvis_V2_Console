@@ -38,7 +38,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = "postgresql://jarvis:KKGY6bqPJEnsXCubWNwSZkPewU9zvbcE@dpg-ctg15si3esus73b02bkg-a.oregon-postgres.render.com/encryption_system"
+DATABASE_URL = os.getenv("DB_URL")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
