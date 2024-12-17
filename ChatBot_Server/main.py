@@ -20,7 +20,7 @@ from jose.exceptions import JWTError
 from jose import JWTError as JWTErr, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer
+from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -541,7 +541,7 @@ async def health_check():
     """
     try:
         with SessionLocal() as test_session:
-            test_session.execute("SELECT 1")
+            test_session.execute(text("SELECT 1"))
         return {"status": "ok", "db_status": "connected"}
     except Exception as db_error:
         logger.error(f"Database connection failed: {db_error}")
