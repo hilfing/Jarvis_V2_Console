@@ -14,7 +14,6 @@
         <DebugType>none</DebugType>
         <Authors>HilFing</Authors>
         <Version>0.1.1</Version>
-        <VersionSuffix>alpha</VersionSuffix>
         <Company>Paul Studios</Company>
         <Description>Jarvis V2. AI Chatbot and Digital Assistant</Description>
         <RepositoryType>git</RepositoryType>
@@ -24,8 +23,6 @@
         <Copyright>Copyright © 2024 Paul Studios</Copyright>
         <Title>Jarvis V2</Title>
         <PackageTags>AI;Chatbot;Assistant</PackageTags>
-        
-        
   </PropertyGroup>
 
     <ItemGroup>
