@@ -93,7 +93,7 @@ public class Logger
             }
 
             File.Delete(oldLogFilePath);
-            Log(LogLevel.Debug, $"Log file path changed to: {LogFilePath}", GetCaller());
+            Log(LogLevel.Debug, $"Log file path changed to: {GeneralUtils.SimplifyFilePath(newLogFilePath)}", GetCaller());
         }
         catch (Exception ex)
         {

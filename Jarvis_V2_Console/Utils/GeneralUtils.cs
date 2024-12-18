@@ -1,6 +1,8 @@
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
+using Newtonsoft.Json.Linq;
 
 namespace Jarvis_V2_Console.Utils;
 
@@ -71,5 +73,30 @@ public static class GeneralUtils
                 logger.Info("Server connection verified successfully.");
             }
         }).GetAwaiter().GetResult();
+    }
+    
+    public static JObject GetSecrets()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var resourceName = "Jarvis_V2_Console.secrets.json";
+
+        JObject json;
+
+        try
+        {
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            using (StreamReader reader = new StreamReader(stream))
+            {
+                string secrets = reader.ReadToEnd();
+                json = JObject.Parse(secrets);
+            }
+
+            return json;
+        }
+        catch (Newtonsoft.Json.JsonReaderException)
+        {
+            logger.Error("Jarvis AI Server Credentials not found. \nIf you are a Developer, please check your 'secrets.json' file.");
+            return new JObject();
+        }
     }
 }

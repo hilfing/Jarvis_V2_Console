@@ -20,62 +20,70 @@ public static class Program
 
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText("JarvisAI V2").Color(Color.Green).Centered());
-        AnsiConsole.Progress()
-            .AutoClear(false)
-            .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new SpinnerColumn())
-            .Start(ctx =>
-            {
-                // Create a single progress task
-                var setupTask = ctx.AddTask("[yellow]Initializing Application[/]");
-
-                // Dynamic status updates
-                if (!ctx.IsFinished)
+        try
+        {
+            AnsiConsole.Progress()
+                .AutoClear(false)
+                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(),
+                    new SpinnerColumn())
+                .Start(ctx =>
                 {
-                    AnsiConsole.MarkupLine("[blue]Starting setup...[/]");
-                    Thread.Sleep(200); // Simulate initial delay
-                }
+                    // Create a single progress task
+                    var setupTask = ctx.AddTask("[yellow]Initializing Application[/]");
 
-                // Setting up Logger
-                AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger and reading Configuration files...");
-                Thread.Sleep(100);
-                logger = SetupLogger();
-                setupTask.Increment(10);
+                    // Dynamic status updates
+                    if (!ctx.IsFinished)
+                    {
+                        AnsiConsole.MarkupLine("[blue]Starting setup...[/]");
+                        Thread.Sleep(200); // Simulate initial delay
+                    }
 
-                // Retrieving Secrets
-                AnsiConsole.MarkupLine("[green]Step 2:[/] Retrieving Server Credentials...");
-                Thread.Sleep(100);
-                json = GetSecrets();
-                setupTask.Increment(10);
+                    // Setting up Logger
+                    AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger and reading Configuration files...");
+                    Thread.Sleep(100);
+                    logger = SetupLogger();
+                    setupTask.Increment(10);
 
-                // Setting up Database Connection
-                AnsiConsole.MarkupLine("[green]Step 3:[/] Establishing Database Connection...");
-                Thread.Sleep(200);
-                JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
-                dbHandler = new DatabaseHandler(
-                    host: dbCreds["Host"]?.Value<string>() ?? "localhost",
-                    database: dbCreds["Database"]?.Value<string>() ?? "postgres",
-                    username: dbCreds["Username"]?.Value<string>() ?? "postgres",
-                    password: dbCreds["Password"]?.Value<string>() ?? ""
-                );
-                GeneralUtils.VerifyDatabaseConnection(dbHandler);
-                setupTask.Increment(20);
+                    // Retrieving Secrets
+                    AnsiConsole.MarkupLine("[green]Step 2:[/] Retrieving Server Credentials...");
+                    Thread.Sleep(100);
+                    json = GeneralUtils.GetSecrets();
+                    setupTask.Increment(10);
 
-                // Setting up Secure API Connection
-                AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
-                JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
-                string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000";
-                client = new SecureConnectionClient(baseUrl);
-                adminAccessClient =
-                    new AdminAccessClient(baseUrl);
-                GeneralUtils.VerifyServerConnection(baseUrl);
-                setupTask.Increment(20);
-                string? adminUsername = apiCreds["AdminUsername"]?.Value<string>() ?? "admin";
-                string? adminPassword = apiCreds["AdminPassword"]?.Value<string>() ?? "admin";
-                adminAccessClient.GetAccessTokenAsync(adminUsername, adminPassword).GetAwaiter().GetResult();
-                setupTask.Increment(20);
-                SecureConnectionSetup.EnforceSecureConnection(client);
-                setupTask.Increment(20);
-            });
+                    // Setting up Database Connection
+                    AnsiConsole.MarkupLine("[green]Step 3:[/] Establishing Database Connection...");
+                    Thread.Sleep(200);
+                    JObject dbCreds = json["Database"]?.Value<JObject>() ?? new JObject();
+                    dbHandler = new DatabaseHandler(
+                        host: dbCreds["Host"]?.Value<string>() ?? "localhost",
+                        database: dbCreds["Database"]?.Value<string>() ?? "postgres",
+                        username: dbCreds["Username"]?.Value<string>() ?? "postgres",
+                        password: dbCreds["Password"]?.Value<string>() ?? ""
+                    );
+                    GeneralUtils.VerifyDatabaseConnection(dbHandler);
+                    setupTask.Increment(20);
+
+                    // Setting up Secure API Connection
+                    AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
+                    JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
+                    string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000";
+                    client = new SecureConnectionClient(baseUrl);
+                    adminAccessClient =
+                        new AdminAccessClient(baseUrl);
+                    GeneralUtils.VerifyServerConnection(baseUrl);
+                    setupTask.Increment(20);
+                    string? adminUsername = apiCreds["AdminUsername"]?.Value<string>() ?? "admin";
+                    string? adminPassword = apiCreds["AdminPassword"]?.Value<string>() ?? "admin";
+                    adminAccessClient.GetAccessTokenAsync(adminUsername, adminPassword).GetAwaiter().GetResult();
+                    setupTask.Increment(20);
+                    SecureConnectionSetup.EnforceSecureConnection(client);
+                    setupTask.Increment(20);
+                });
+        }
+        catch (Exception e)
+        {
+            logger.Critical("Failure to load JarvisAI. Please contact the Developer.");
+        }
 
         AnsiConsole.Status().Start("Loading JarvisAI...", ctx =>
         {
@@ -159,23 +167,6 @@ public static class Program
         logger.ChangeLogFilePath(logFilePath);
 
         return logger;
-    }
-
-    private static JObject GetSecrets()
-    {
-        var assembly = Assembly.GetExecutingAssembly();
-        var resourceName = "Jarvis_V2_Console.secrets.json";
-
-        JObject json;
-
-        using (Stream stream = assembly.GetManifestResourceStream(resourceName))
-        using (StreamReader reader = new StreamReader(stream))
-        {
-            string secrets = reader.ReadToEnd();
-            json = JObject.Parse(secrets);
-        }
-
-        return json;
     }
 
     public static void DisplayWelcomeMessage()
