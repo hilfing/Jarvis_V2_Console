@@ -11,6 +11,20 @@
         <SelfContained>true</SelfContained>
         <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        <DebugType>none</DebugType>
+        <Authors>HilFing</Authors>
+        <Version>0.1.1</Version>
+        <VersionSuffix>alpha</VersionSuffix>
+        <Company>Paul Studios</Company>
+        <Description>Jarvis V2. AI Chatbot and Digital Assistant</Description>
+        <RepositoryType>git</RepositoryType>
+        <RepositoryUrl>https://github.com/hilfing/Jarvis_V2_Console</RepositoryUrl>
+        <Product>JarvisAI</Product>
+        <PackageId>JarvisAI_V2</PackageId>
+        <Copyright>Copyright © 2024 Paul Studios</Copyright>
+        <Title>Jarvis V2</Title>
+        <PackageTags>AI;Chatbot;Assistant</PackageTags>
+        
         
   </PropertyGroup>
 
