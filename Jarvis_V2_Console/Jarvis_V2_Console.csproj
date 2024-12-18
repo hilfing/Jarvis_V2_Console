@@ -7,7 +7,11 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-      <UserSecretsId>5c25fdf5-bc55-49b1-9c2d-14e078c5a5da</UserSecretsId>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>true</SelfContained>
+        <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+        <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+        
   </PropertyGroup>
 
     <ItemGroup>
