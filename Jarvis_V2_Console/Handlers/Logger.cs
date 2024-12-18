@@ -33,6 +33,8 @@ public class Logger
         string folderName = "Logs";
         string folderPath = Path.Combine(runningDir, folderName);
 
+        folderPath = ExecutableHelper.GetExecutableFilePath(folderName);
+
         if (!Directory.Exists(folderPath))
         {
             Directory.CreateDirectory(folderPath);
@@ -43,8 +45,8 @@ public class Logger
     protected LogLevel FileLevel { get; set; }
     private static string LogFileName { get; set; } = $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log";
 
-    private static string LogFilePath { get; set; } = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs",
-        $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
+    private static string LogFilePath { get; set; } = ExecutableHelper.GetExecutableFilePath(
+        Path.Combine("Logs", $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log"));
 
     private string LoggerName { get; set; }
 
@@ -71,7 +73,7 @@ public class Logger
                 throw new ArgumentException("Log path cannot be null or empty.");
             }
 
-            string fullLogFolderPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, path);
+            string fullLogFolderPath = ExecutableHelper.GetExecutableFilePath(path);
             string newLogFilePath = Path.Combine(fullLogFolderPath, $"{DateTime.Now:yyyy-MM-dd-HH-mm-ss}.log");
 
             if (Path.GetDirectoryName(LogFilePath) == fullLogFolderPath)

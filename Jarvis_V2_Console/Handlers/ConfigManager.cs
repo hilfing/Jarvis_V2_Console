@@ -1,14 +1,12 @@
 using System.Collections.Concurrent;
 using IniParser;
+using Jarvis_V2_Console.Utils;
 
 namespace Jarvis_V2_Console.Handlers;
 
 public static class ConfigManager
 {
-    private static readonly string ConfigFilePath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory,
-        "config.ini"
-    );
+    private static readonly string ConfigFilePath = ExecutableHelper.GetExecutableFilePath("config.ini");
 
     private static readonly Logger logger = new Logger("JarvisAI.Handlers.ConfigManager");
 
