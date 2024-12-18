@@ -42,6 +42,7 @@ public static class Program
                     AnsiConsole.MarkupLine("[green]Step 1:[/] Setting up Logger and reading Configuration files...");
                     Thread.Sleep(100);
                     logger = SetupLogger();
+                    logger.Debug($"Running Directory: {ExecutableHelper.GetExecutableDirectory()}");
                     setupTask.Increment(10);
 
                     // Retrieving Secrets
