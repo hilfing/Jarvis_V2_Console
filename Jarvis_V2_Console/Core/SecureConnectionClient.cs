@@ -94,7 +94,7 @@ public class SecureConnectionClient
 
             byte[] verificationMessage = Encoding.UTF8.GetBytes("CONNECTION_VERIFICATION_REQUEST");
             var encryptedPayload = CryptoHandler.EncryptMessage(keyExchangeResult.DerivedKey, verificationMessage);
-            logger.Debug("Verification message encrypted");
+            logger.Debug("Verification message encrypted. Sending verification request");
 
             var verificationRequest = new
             {
