@@ -18,7 +18,7 @@ public class AdminAccessClient
     {
         _httpClient = new HttpClient();
         _httpClient.BaseAddress = new Uri(baseUrl);
-        logger.Info($"Admin Access Client initialized. Base URL: {baseUrl}");
+        logger.Info($"Admin Access Client initialized.");
     }
 
     public async Task<OperationResult<bool>> GetAccessTokenAsync(string username, string password)

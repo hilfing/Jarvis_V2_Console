@@ -22,7 +22,7 @@ public class SecureConnectionClient
     {
         _httpClient = new HttpClient();
         _baseUrl = baseUrl;
-        logger.Info($"Secure Connection Client initialized. Base URL: {baseUrl}");
+        logger.Info($"Secure Connection Client initialized.");
     }
 
     /// <summary>

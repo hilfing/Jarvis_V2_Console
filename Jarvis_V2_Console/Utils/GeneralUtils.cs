@@ -61,7 +61,7 @@ public static class GeneralUtils
         {
             HttpClient httpClient = new HttpClient();
             httpClient.BaseAddress = new Uri(BaseUrl);
-            logger.Info($"Verifying server connection to {BaseUrl}...");
+            logger.Info($"Verifying server connection to API...");
             var response = await httpClient.GetAsync("/health");
             string responseContent = await response.Content.ReadAsStringAsync();
             if (!response.IsSuccessStatusCode || !responseContent.Contains("ok"))
