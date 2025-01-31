@@ -1,9 +1,10 @@
 import base64
+import json
 import logging
 import os
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC, timezone
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -20,7 +21,7 @@ from jose.exceptions import JWTError
 from jose import JWTError as JWTErr, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer, text
+from sqlalchemy import create_engine, Column, String, DateTime, LargeBinary, Integer, text, inspect
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -40,7 +41,7 @@ logging.basicConfig(
 logger = logging.getLogger('SecureEncryptionSystem')
 
 # Database Configuration
-DATABASE_URL = os.getenv("DB_URL")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://web:auth@key-db/main")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -61,6 +62,92 @@ users_db = {
         "username": os.getenv("ADMIN_NAME", "admin"),
         "hashed_password": pwd_context.hash(os.getenv("ADMIN_PASSWORD", "admin")),
     }}
+
+
+def initialize_database(engine, Base):
+    """Initialize database, create tables if they don't exist, and verify structure."""
+    inspector = inspect(engine)
+    existing_tables = inspector.get_table_names()
+
+    logger.info("Checking database tables...")
+
+    # Create extension if it doesn't exist
+    try:
+        with engine.connect() as connection:
+            connection.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"'))
+            connection.commit()
+    except Exception as e:
+        logger.warning(f"Could not create uuid-ossp extension: {e}")
+
+    # Get all models from Base
+    tables_to_create = []
+    for table_name, table in Base.metadata.tables.items():
+        if table_name not in existing_tables:
+            tables_to_create.append(table)
+            logger.info(f"Table {table_name} not found - will be created")
+        else:
+            # Verify table structure
+            existing_columns = {col['name']: col for col in inspector.get_columns(table_name)}
+            model_columns = {col.name: col for col in table.columns}
+
+            # Check for missing columns
+            missing_columns = set(model_columns.keys()) - set(existing_columns.keys())
+            if missing_columns:
+                logger.warning(f"Missing columns in {table_name}: {missing_columns}")
+                # Could add column creation here if needed
+
+    # Create missing tables
+    if tables_to_create:
+        logger.info("Creating missing tables...")
+        try:
+            Base.metadata.create_all(engine, tables=tables_to_create)
+            logger.info("Successfully created all missing tables")
+        except Exception as e:
+            logger.error(f"Error creating tables: {e}")
+            raise
+
+    # Create cleanup function
+    cleanup_function = """
+    CREATE OR REPLACE FUNCTION cleanup_expired_keys()
+    RETURNS void AS $$
+    BEGIN
+        -- Delete expired client key exchanges (older than 7 days)
+        DELETE FROM client_key_exchanges 
+        WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '7 days';
+
+        -- Delete old server key rotations (older than 30 days)
+        DELETE FROM server_key_rotations 
+        WHERE rotation_timestamp < CURRENT_TIMESTAMP - INTERVAL '30 days'
+        AND is_active = 'inactive';
+    END;
+    $$ LANGUAGE plpgsql;
+    """
+
+    try:
+        with engine.connect() as connection:
+            connection.execute(text(cleanup_function))
+            connection.commit()
+            logger.info("Successfully created/updated cleanup function")
+    except Exception as e:
+        logger.warning(f"Error creating cleanup function: {e}")
+
+    # Create indexes if they don't exist
+    index_definitions = [
+        'CREATE INDEX IF NOT EXISTS idx_server_key_rotations_is_active ON server_key_rotations(is_active)',
+        'CREATE INDEX IF NOT EXISTS idx_client_key_exchanges_created_at ON client_key_exchanges(created_at)',
+        'CREATE INDEX IF NOT EXISTS idx_client_key_exchanges_server_key_id ON client_key_exchanges(server_key_id)'
+    ]
+
+    try:
+        with engine.connect() as connection:
+            for index_def in index_definitions:
+                connection.execute(text(index_def))
+            connection.commit()
+            logger.info("Successfully created/verified indexes")
+    except Exception as e:
+        logger.warning(f"Error creating indexes: {e}")
+
+    logger.info("Database initialization completed")
 
 
 def parse_log_file(file_path: str) -> Dict[str,List[Dict[str, str]]]:
@@ -99,9 +186,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(UTC) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(UTC) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -111,7 +198,7 @@ class ServerKeyRotation(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     server_private_key = Column(LargeBinary, nullable=False)
     server_public_key = Column(LargeBinary, nullable=False)
-    rotation_timestamp = Column(DateTime, default=datetime.utcnow)
+    rotation_timestamp = Column(DateTime, default=datetime.now(UTC))
     is_active = Column(String, default='active')
 
 
@@ -122,7 +209,7 @@ class ClientKeyExchange(Base):
     server_key_id = Column(Integer, nullable=False)
     derived_key = Column(LargeBinary, nullable=False)
     hmac_key = Column(LargeBinary, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(UTC))
     last_verified_at = Column(DateTime, nullable=True)
     verification_attempts = Column(Integer, default=0)
 
@@ -290,9 +377,12 @@ class SecurityUtilities:
             raise ValueError("Decryption or HMAC verification failed")
 
     @staticmethod
-    def is_key_expired(created_at: datetime, max_age: timedelta = timedelta(days=7)) -> bool:
+    def is_key_expired(created_at: datetime, max_age: timedelta = timedelta(hours=5)) -> bool:
         """Check if a key has expired."""
-        return datetime.utcnow() > created_at + max_age
+        # Ensure both timestamps are offset-aware and in UTC
+        now = datetime.now(UTC)
+        created_at = created_at.replace(tzinfo=UTC) if created_at.tzinfo is None else created_at
+        return now > created_at + max_age
 
 
 # Pydantic Models
@@ -310,7 +400,11 @@ class VerificationRequest(BaseModel):
 app = FastAPI(
     title="Advanced Secure Encryption System",
     description="Robust end-to-end encrypted communication with key rotation",
-    version="1.0.0"
+    version="1.0.0",
+    contact={"name": "HilFing", "email": "contact@hilfing.dev"},
+    openapi_url="/jarvis/v1/openapi.json",
+    docs_url="/jarvis/v1/docs",
+    redoc_url=None
 )
 
 class SuppressLogMiddleware(BaseHTTPMiddleware):
@@ -334,7 +428,10 @@ def get_db():
     finally:
         db.close()
 
-@app.post("/token")
+base_router = APIRouter()
+
+
+@base_router.post("/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     Real login endpoint for obtaining a JWT token.
@@ -370,7 +467,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     except JWTError or JWTErr:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
-@app.post("/key-exchange")
+@base_router.post("/key-exchange")
 def initiate_key_exchange(
         request: KeyExchangeRequest,
         db: Session = Depends(get_db)
@@ -437,7 +534,7 @@ def initiate_key_exchange(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/verify-connection")
+@base_router.post("/verify-connection")
 def verify_connection(
         request: VerificationRequest,
         db: Session = Depends(get_db)
@@ -456,6 +553,8 @@ def verify_connection(
         # Check key expiration
         if SecurityUtilities.is_key_expired(key_exchange.created_at):
             logger.warning(f"Key expired for client: {request.client_id}")
+            logger.debug(f"Key exchange created_at: {key_exchange.created_at}")
+            logger.debug(f"Current time: {datetime.now(timezone.utc)}")
             db.delete(key_exchange)
             db.commit()
             return {"status": "key_expired"}
@@ -469,7 +568,7 @@ def verify_connection(
 
             # Increment verification attempts
             key_exchange.verification_attempts += 1
-            key_exchange.last_verified_at = datetime.utcnow()
+            key_exchange.last_verified_at = datetime.now(UTC)
             db.commit()
 
             # Additional verification logic
@@ -504,12 +603,12 @@ def rotate_server_keys(db: Session):
 
         # Clean up expired client key exchanges
         expired_exchanges = db.query(ClientKeyExchange).filter(
-            ClientKeyExchange.created_at < datetime.utcnow() - timedelta(days=7)
+            ClientKeyExchange.created_at < datetime.now(UTC) - timedelta(days=7)
         ).delete(synchronize_session=False)
 
         # Clean up old server key rotations
         old_key_rotations = db.query(ServerKeyRotation).filter(
-            ServerKeyRotation.rotation_timestamp < datetime.utcnow() - timedelta(days=30)
+            ServerKeyRotation.rotation_timestamp < datetime.now(UTC) - timedelta(days=30)
         ).delete(synchronize_session=False)
 
         db.commit()
@@ -526,6 +625,13 @@ def rotate_server_keys(db: Session):
 async def startup_event():
     logger.info("Secure Encryption System starting up")
 
+    # Initialize database
+    try:
+        initialize_database(engine, Base)
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
+
     # Initial server key generation
     db = SessionLocal()
     try:
@@ -540,14 +646,14 @@ async def startup_event():
 async def shutdown_event():
     logger.info("Secure Encryption System shutting down")
 
-@app.get("/logs", response_model=Dict[str,List[Dict[str, str]]])
+@base_router.get("/logs", response_model=Dict[str,List[Dict[str, str]]])
 async def get_logs(current_user: dict = Depends(get_current_user)):
     """
     Endpoint to fetch logs in JSON format.
     """
     return parse_log_file("security_system.log")
 
-@app.get("/health")
+@base_router.get("/health")
 async def health_check():
     """
     Health check endpoint.
@@ -601,7 +707,7 @@ def process_encrypted_chat(
             raise HTTPException(status_code=401, detail="Invalid client")
 
         # Check key expiration
-        if SecurityUtilities.is_key_expired(key_exchange.created_at):
+        if SecurityUtilities.is_key_expired(key_exchange.created_at.replace(tzinfo=timezone.utc)):
             logger.warning(f"Expired key for chat client: {request.client_id}")
             db.delete(key_exchange)
             db.commit()
@@ -624,7 +730,7 @@ def process_encrypted_chat(
             )
 
             # Update last interaction
-            key_exchange.last_verified_at = datetime.utcnow()
+            key_exchange.last_verified_at = datetime.now(UTC)
             db.commit()
 
             logger.info(f"Chat processed for client: {request.client_id}")
@@ -644,9 +750,7 @@ def process_encrypted_chat(
 
 def process_chat_message(message: bytes) -> str:
     """
-    Core message processing logic.
-
-    This is a placeholder implementation that you'll customize based on your specific requirements.
+    Process chat messages, supporting both plain text and JSON formats.
 
     Args:
         message (bytes): Decrypted message bytes
@@ -658,22 +762,39 @@ def process_chat_message(message: bytes) -> str:
         # Convert bytes to string
         message_str = message.decode('utf-8')
 
-        # Implement your specific message processing logic here
-        # For example:
-        if message_str.startswith("/help"):
-            return "Available commands: /help, /status"
-        elif message_str.startswith("/status"):
-            return "System is operational"
-        else:
-            return f"Echo: {message_str}"
+        # Try parsing as JSON first
+        try:
+            # Attempt to parse the message as JSON
+            chat_data = json.loads(message_str)
+
+            # Check if it's a valid JSON chat message structure
+            if isinstance(chat_data, dict) and 'history' in chat_data and 'msg' in chat_data:
+                # Validate history format
+                if not isinstance(chat_data['history'], list):
+                    return "Invalid chat history format"
+
+                # Process JSON-based message
+                history = chat_data['history']
+                current_message = chat_data['msg']
+
+                response, tokens = get_response_with_context(history, current_message)
+
+                context_length = len(history)
+                return f"Received message in context of {context_length} previous messages. \nCurrent message: {current_message}"
+
+            # If JSON doesn't match expected structure, fall back to plain text processing
+            raise ValueError("JSON structure does not match expected format")
+
+        except json.JSONDecodeError:
+            raise ValueError("Message is not valid JSON")
 
     except Exception as e:
         logger.error(f"Message processing error: {e}")
         return "Error processing message"
 
-
 # Include the router in your main FastAPI app
-app.include_router(chat_router, prefix="/api/v1")
+app.include_router(base_router, prefix="/jarvis/v1")
+app.include_router(chat_router, prefix="/jarvis/v1")
 
 if __name__ == "__main__":
     import uvicorn
