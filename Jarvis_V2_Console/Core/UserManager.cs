@@ -198,4 +198,6 @@ public class UserManager
 
         return true;
     }
+    
+    public bool IsUserAuthenticated() => IsAuthenticated;
 }

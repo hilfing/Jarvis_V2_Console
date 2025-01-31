@@ -32,7 +32,7 @@ public class AdminAccessClient
             });
             logger.Info("Requesting access token...");
 
-            var response = await _httpClient.PostAsync("/token", request);
+            var response = await _httpClient.PostAsync("token", request);
             if (!response.IsSuccessStatusCode)
             {
                 logger.Critical("Failed to get access token. Status Code: " + response.StatusCode);
@@ -72,7 +72,7 @@ public class AdminAccessClient
 
         try
         {
-            var response = await _httpClient.GetAsync("/logs");
+            var response = await _httpClient.GetAsync("logs");
 
             if (!response.IsSuccessStatusCode)
             {

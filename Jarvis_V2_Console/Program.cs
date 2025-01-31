@@ -2,6 +2,7 @@
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Utils;
+using Jarvis_V2_Console.Screens.ChatScreen;
 using Newtonsoft.Json.Linq;
 using Sharprompt;
 using Spectre.Console;
@@ -67,7 +68,7 @@ public static class Program
                     // Setting up Secure API Connection
                     AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
                     JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
-                    string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000";
+                    string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000/jarvis/v1/";
                     client = new SecureConnectionClient(baseUrl);
                     adminAccessClient =
                         new AdminAccessClient(baseUrl);
@@ -93,6 +94,9 @@ public static class Program
         });
 
         DisplayWelcomeMessage();
+        
+        var chat2 = new JarvisChat();
+        chat2.Start();
 
         UserManager userManager = new UserManager(dbHandler);
 
@@ -134,7 +138,18 @@ public static class Program
                 GeneralUtils.Cleanup();
                 return;
         }
-
+        if (userManager.IsUserAuthenticated())
+        {
+            AnsiConsole.MarkupLine("[green]User authenticated successfully![/]");
+            var chat = new JarvisChat();
+            chat.Start();
+        }
+        else
+        {
+            logger.Error("User not logged in. Exiting...");
+            GeneralUtils.Cleanup();
+            return;
+        }
         GeneralUtils.Cleanup();
     }
 

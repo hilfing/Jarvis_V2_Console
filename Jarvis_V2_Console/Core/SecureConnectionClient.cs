@@ -50,7 +50,7 @@ public class SecureConnectionClient
 
             logger.Debug($"Sending key exchange request with Client ID: {keyExchangeRequest.client_id}");
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/key-exchange", keyExchangeRequest);
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}key-exchange", keyExchangeRequest);
             if (!response.IsSuccessStatusCode)
             {
                 logger.Error("Key exchange request failed. Status Code: " + response.StatusCode);
@@ -102,7 +102,7 @@ public class SecureConnectionClient
                 encrypted_payload = encryptedPayload
             };
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/verify-connection", verificationRequest);
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}verify-connection", verificationRequest);
             var content = await response.Content.ReadAsStringAsync();
             var result = JsonSerializer.Deserialize<VerificationResponse>(content);
             logger.Debug("Verification response received");
@@ -191,7 +191,7 @@ public class SecureConnectionClient
             logger.Debug("Request encrypted");
 
             // Send the encrypted request
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}/{endpoint}", encryptedRequest);
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}{endpoint}", encryptedRequest);
             var content = await response.Content.ReadAsStringAsync();
 
             // Parse the response
