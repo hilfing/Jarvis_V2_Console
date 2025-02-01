@@ -33,6 +33,7 @@ ENV PYTHONDONTWRITEBYTECODE=1
 
 # Copy application code
 COPY main.py .
+COPY chatbot_handler.py .
 
 # Create non-root user for security
 RUN adduser --system --group app_user && \
