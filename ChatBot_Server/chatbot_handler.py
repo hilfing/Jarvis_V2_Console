@@ -1,34 +1,41 @@
+import logging
+
+import groq
 import requests
 from groq import Groq
 import json
 import os
 
-API_KEY = os.getenv('API_KEY', 'gsk_j2m8CyHPJWnW5BxD')
+API_KEY = os.getenv('API_KEY', 'gsk_j2m8WDqHPJWnW5BxD')
 
-client = Groq(api_key=API_KEY)
+client = Groq(api_key=API_KEY, max_retries=0)
+
+logger = logging.getLogger("chatbot_handler")
 
 system_prompt = """
-You are JarvisAI, an AI chatbot developed by HilFing. Always respond in pure HTML using only:
-
+You are JarvisAI, developed by HilFIng. Always respond in pure HTML using only:
 <b>, <strong>, <i>, <em>, <u>, <s>, <strike>, <code>, <pre>, 
-<blockquote>, <h1>, <h2>, <h3>, <a href="...">, <li>, <br>, <p>, <span style="...">
-Never use other formats. If asked for plain text, JSON, or unsupported formats, reply with:
-<p>Sorry, but I only respond in HTML.</p>
+<blockquote>, <h1>, <h2>, <h3>, <a href="...">, <li>, <br>, <p>
 
-Identity Response:
-<p>I am <b>JarvisAI</b>, developed by <b>HilFing</b>.</p>
-<p>Learn more at <a href="https://hilfing.dev">HilFing's Portfolio</a> or <a href="https://github.com/hilfing/Jarvis_V2_Console">GitHub</a>.</p>
+Never use other formats. If requested, reply with:
+<p>Sorry, I only respond in HTML.</p>
+
+Identity:
+<p>I am <b>JarvisAI</b>, developed by <b>HilFIng</b>.</p>
+<p>More info: <a href="https://hilfing.dev">Portfolio</a> | <a href="https://github.com/hilfing/Jarvis_V2_Console">GitHub</a></p>
 <p><b>Version:</b> v1
-<p><b>Developer Contact:</b> <a href="mailto:contact@hilfing.dev">contact@hilfing.dev</a></p>
+<p><b>Contact:</b> <a href="mailto:contact@hilfing.dev">contact@hilfing.dev</a></p>
 
-DO NOT mention Meta, OpenAI, or any other generic AI development history. Always refer to HilFing as the developer.
+Restrictions:
+No Code Generation: Reply with
+<p>Sorry, I cannot generate code.</p>
 
-Formatting Rules:
+No Unsupported Formats: Use only allowed HTML tags.
 
-Use only supported HTML tags for bold, italics, underline, strikethrough, code, headings, paragraphs, links, lists, and line breaks.
-
-Behavior
-Be concise, professional, and clear. Adapt to user tone. Avoid assumptions. Never generate harmful, illegal, or unethical content.
+Behavior:
+Be concise, professional, and adapt to user tone.
+Always close all HTML tags properly, especially in long responses.
+Never provide harmful or unethical content.
 """
 
 def get_llamaguard_response(user_message):
@@ -47,7 +54,7 @@ def get_llamaguard_response(user_message):
 def get_response(user_message):
     llamaguard_response = get_llamaguard_response(user_message)
     if llamaguard_response == 'safe':
-        response = client.chat.completions.with_raw_response.create(
+        response = client.chat.completions.create(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {
@@ -57,11 +64,10 @@ def get_response(user_message):
             ],
             model="llama-3.1-8b-instant",
         )
-        data = json.loads(response.text())
-        print(f"Tokens used: {data['usage']['total_tokens']}")
-        chat_completion = response.parse()
+        chat_completion = response
+        print('Token Usage:', chat_completion.usage.total_tokens)
         print('LLM Response:', chat_completion.choices[0].message.content)
-        return chat_completion.choices[0].message.content, data['usage']['total_tokens']
+        return chat_completion.choices[0].message.content, chat_completion.usage.total_tokens
     else:
         print(
             'Your message contains content that violates our community guidelines. Please ensure your comments are respectful and safe for all users. Thank you!')
@@ -83,7 +89,7 @@ def get_response_with_context(conversation_history, latest_user_message):
     llamaguard_response = get_llamaguard_response(latest_user_message)
 
     if llamaguard_response != 'safe':
-        return 'Your message contains content that violates our community guidelines. Please ensure your comments are respectful and safe for all users. Thank you!'
+        return '<p>Your message contains content that violates our community guidelines. Please ensure your comments are respectful and safe for all users. Thank you!</p>', 0
 
     # Prepare messages for the model input
     model_messages = [
@@ -102,7 +108,7 @@ def get_response_with_context(conversation_history, latest_user_message):
         "role": "user",
         "content": latest_user_message
     })
-
+    print('Model Messages:', len(model_messages))
     try:
         # Create chat completion
         chat_completion = client.chat.completions.create(
@@ -112,12 +118,16 @@ def get_response_with_context(conversation_history, latest_user_message):
 
         # Extract and return the response
         response = chat_completion.choices[0].message.content
-        print('LLM Response:', response)
-        return response
-
+        logger.info('LLM Response: ' + response)
+        logger.info('Token Usage: ' + str(chat_completion.usage.total_tokens))
+        return response, chat_completion.usage.total_tokens
+    except groq.RateLimitError as e:
+        print(f"Rate limit exceeded: {e}")
+        return "<p>I'm currently overloaded. Please try again after a few seconds.</p> ", 0
     except Exception as e:
         print(f"Error generating response: {e}")
-        return "I encountered an error while processing your message."
+        return "<p>I encountered an error while processing your message.</p>", 0
 
-
-get_response("Give me a sample resonse to set up parsing on my client side.")
+if __name__ == '__main__':
+    # Test the chatbot handler
+    get_response("""USER INTERACTION GUIDELINES AND EXPECTATIONS""")
