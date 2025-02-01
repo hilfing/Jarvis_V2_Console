@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Models.AdminAccess;
+using Jarvis_V2_Console.Models.Serializers.AdminAccess;
 using Jarvis_V2_Console.Utils;
 using Sharprompt;
 using Spectre.Console;
@@ -40,7 +41,11 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(content);
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = TokenResponseJsonContext.Default
+            };
+            var tokenResponse = JsonSerializer.Deserialize<TokenResponse>(content, options);
 
             if (tokenResponse != null)
             {
@@ -81,7 +86,11 @@ public class AdminAccessClient
             }
 
             var content = await response.Content.ReadAsStringAsync();
-            var logs = JsonSerializer.Deserialize<LogsResponse>(content);
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = LogsJsonContext.Default
+            };
+            var logs = JsonSerializer.Deserialize<LogsResponse>(content, options);
             logger.Debug("Logs fetched successfully.");
 
             if (logs != null && logs.Logs != null)

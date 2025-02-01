@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using Jarvis_V2_Console.Models;
 
 namespace Jarvis_V2_Console.Handlers;
 
@@ -9,10 +10,10 @@ public class ChatAPIHandler
     public object GenerateChatJson(string mainMsg, List<Dictionary<string, string>> history)
     {
         // Create JSON object
-        var jsonObject = new 
+        var jsonObject = new ChatData
         {
-            msg = mainMsg,
-            history = history
+            Msg = mainMsg,
+            History = history
         };
         
         // Return the JSON string

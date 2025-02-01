@@ -31,6 +31,7 @@ public class JarvisChat
                 Console.WriteLine(historyItem["role"]);
             }
         }
+        logger.Info("JarvisChat initialized");
     }
 
     public class ChatMessage
@@ -120,7 +121,7 @@ public class JarvisChat
         var jsonString = chatHandler.GenerateChatJson(userMessage, history);
 
         // Send the request and get the response (assuming client is initialized elsewhere)
-        var response = client.SendEncryptedRequestAsync("chat", jsonString).GetAwaiter().GetResult();
+        var response = client.SendEncryptedChatRequestAsync("chat", jsonString).GetAwaiter().GetResult();
 
         // Extract the response content (assuming the response is in JSON format)
         var responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response.Data);

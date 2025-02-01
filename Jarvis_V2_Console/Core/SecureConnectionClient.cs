@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using Jarvis_V2_Console.Handlers;
 using Jarvis_V2_Console.Models.Encryption;
+using Jarvis_V2_Console.Models.Serializers;
+using Jarvis_V2_Console.Models.Serializers.Encryption;
 using Jarvis_V2_Console.Utils;
 
 namespace Jarvis_V2_Console.Core;
@@ -41,24 +43,30 @@ public class SecureConnectionClient
             var clientPublicKey = Convert.ToBase64String(clientPublicKeyBytes);
             logger.Debug("Client public key generated");
 
-            var keyExchangeRequest = new
+            var keyExchangeRequest = new KeyExchangeRequest
             {
-                client_public_key = clientPublicKey,
-                client_id = Guid.NewGuid().ToString()
+                ClientPublicKey = clientPublicKey,
+                ClientId = Guid.NewGuid().ToString()
             };
 
+            logger.Debug($"Sending key exchange request with Client ID: {keyExchangeRequest.ClientId}");
 
-            logger.Debug($"Sending key exchange request with Client ID: {keyExchangeRequest.client_id}");
-
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}key-exchange", keyExchangeRequest);
+            var options1 = new JsonSerializerOptions
+            {
+                TypeInfoResolver = KeyExchangeRequestJsonContext.Default
+            };
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}key-exchange", keyExchangeRequest, options1);
             if (!response.IsSuccessStatusCode)
             {
                 logger.Error("Key exchange request failed. Status Code: " + response.StatusCode);
                 throw new Exception("Status code: " + response.StatusCode);
             }
-
             var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<KeyExchangeResponse>(content);
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = ResponseJsonContext.Default
+            };
+            var result = JsonSerializer.Deserialize<KeyExchangeResponse>(content, options);
             logger.Debug("Key exchange response received");
 
             byte[] serverPublicKeyBytes = Convert.FromBase64String(result.server_public_key);
@@ -102,15 +110,24 @@ public class SecureConnectionClient
             var encryptedPayload = CryptoHandler.EncryptMessage(keyExchangeResult.DerivedKey, verificationMessage);
             logger.Debug("Verification message encrypted. Sending verification request");
 
-            var verificationRequest = new
+            var verificationRequest = new EncryptedRequest
             {
-                client_id = keyExchangeResult.ClientId,
-                encrypted_payload = encryptedPayload
+                ClientId = keyExchangeResult.ClientId,
+                EncryptedPayload = encryptedPayload
+            };
+            var options1 = new JsonSerializerOptions
+            {
+                TypeInfoResolver = EncryptedJsonContext.Default
             };
 
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}verify-connection", verificationRequest);
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}verify-connection", verificationRequest, options1);
             var content = await response.Content.ReadAsStringAsync();
-            var result = JsonSerializer.Deserialize<VerificationResponse>(content);
+            
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = ResponseJsonContext.Default
+            };
+            var result = JsonSerializer.Deserialize<VerificationResponse>(content, options);
             logger.Debug("Verification response received");
 
             if (result.status == "verified")
@@ -156,7 +173,7 @@ public class SecureConnectionClient
     /// <param name="endpoint">Relative endpoint URL</param>
     /// <param name="data">Data to send</param>
     /// <returns>Decrypted response data</returns>
-    public async Task<OperationResult<string>> SendEncryptedRequestAsync(string endpoint, object data)
+    public async Task<OperationResult<string>> SendEncryptedChatRequestAsync(string endpoint, object data)
     {
         // Ensure we have an active key exchange
         if (_currentKeyExchangeResult == null)
@@ -181,7 +198,12 @@ public class SecureConnectionClient
         try
         {
             // Serialize the data
-            string jsonData = JsonSerializer.Serialize(data);
+            var options2 = new JsonSerializerOptions
+            {
+                TypeInfoResolver = ChatDataJsonContext.Default
+            };
+
+            string jsonData = JsonSerializer.Serialize(data, options2);
             byte[] messageBytes = Encoding.UTF8.GetBytes(jsonData);
             logger.Debug("Data serialized");
 
@@ -189,19 +211,26 @@ public class SecureConnectionClient
             var encryptedPayload = CryptoHandler.EncryptMessage(_currentKeyExchangeResult.DerivedKey, messageBytes);
 
             // Prepare the encrypted request
-            var encryptedRequest = new
-            {
-                client_id = _currentKeyExchangeResult.ClientId,
-                encrypted_payload = encryptedPayload
-            };
+            var encryptedRequest = new EncryptedRequest{
+                ClientId = _currentKeyExchangeResult.ClientId,
+                EncryptedPayload = encryptedPayload
+                };
             logger.Debug("Request encrypted");
-
+            var options1 = new JsonSerializerOptions
+            {
+                TypeInfoResolver = EncryptedJsonContext.Default
+            };
             // Send the encrypted request
-            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}{endpoint}", encryptedRequest);
+            var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}{endpoint}", encryptedRequest, options1);
             var content = await response.Content.ReadAsStringAsync();
 
             // Parse the response
-            var encryptedResponse = JsonSerializer.Deserialize<EncryptedResponse>(content);
+            var options = new JsonSerializerOptions
+            {
+                TypeInfoResolver = EncryptedJsonContext.Default
+            };
+
+            var encryptedResponse = JsonSerializer.Deserialize<EncryptedResponse>(content, options);
             logger.Debug("Response received");
 
             // Check response status
