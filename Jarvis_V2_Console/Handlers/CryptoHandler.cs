@@ -63,9 +63,7 @@ public class CryptoHandler
         }
         catch (Exception ex)
         {
-            logger.Error($"Encryption failed with detailed error: {ex}");
-            logger.Error($"Exception Type: {ex.GetType().FullName}");
-            logger.Error($"Stack Trace: {ex.StackTrace}");
+            logger.Error($"Encryption failed with detailed error: {ex.Message}");
             throw;
         }
     }
@@ -108,9 +106,7 @@ public class CryptoHandler
         }
         catch (Exception ex)
         {
-            logger.Error("Decryption failed. Error: " + ex);
-            logger.Error($"Exception Type: {ex.GetType().FullName}");
-            logger.Error($"Stack Trace: {ex.StackTrace}");
+            logger.Error("Decryption failed. Error: " + ex.Message);
             throw;
         }
     }
