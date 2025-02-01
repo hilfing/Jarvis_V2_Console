@@ -68,7 +68,13 @@ public class SecureConnectionClient
 
             using var importedServerKey = ECDiffieHellman.Create();
             importedServerKey.ImportSubjectPublicKeyInfo(serverPublicKeyBytes, out _);
-
+            
+            _currentKeyExchangeResult = new KeyExchangeResult
+            {
+                ClientId = result.client_id,
+                DerivedKey = sharedSecret,
+                ServerPublicKey = importedServerKey.PublicKey
+            };
             return new KeyExchangeResult
             {
                 ClientId = result.client_id,
@@ -195,20 +201,20 @@ public class SecureConnectionClient
             var content = await response.Content.ReadAsStringAsync();
 
             // Parse the response
-            var encryptedResponse = JsonSerializer.Deserialize<VerificationResponse>(content);
+            var encryptedResponse = JsonSerializer.Deserialize<EncryptedResponse>(content);
             logger.Debug("Response received");
 
             // Check response status
-            if (encryptedResponse.status != "verified")
+            if (encryptedResponse.status != "success")
             {
-                logger.Warning($"Encrypted request failed. Status: {encryptedResponse.status}");
+                logger.Warning($"Encrypted request failed. [Failure Point: Server] | Status: {encryptedResponse.status}");
                 return OperationResult<string>.Failure($"Request failed with status: {encryptedResponse.status}");
             }
 
             // Decrypt the response
             byte[] decryptedResponseBytes = CryptoHandler.DecryptMessage(
                 _currentKeyExchangeResult.DerivedKey,
-                encryptedResponse.verification_payload
+                encryptedResponse.response_payload
             );
             logger.Debug("Response decrypted");
             // Convert decrypted bytes to string
@@ -219,7 +225,7 @@ public class SecureConnectionClient
         }
         catch (Exception ex)
         {
-            logger.Error("Encrypted request failed. Error: " + ex);
+            logger.Error("Encrypted request failed. Error: " + ex.Message);
 
             // Reset key exchange result on persistent failures
             _currentKeyExchangeResult = null;
