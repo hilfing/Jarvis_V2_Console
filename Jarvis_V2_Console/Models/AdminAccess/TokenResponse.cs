@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Newtonsoft.Json.Serialization;
 
 namespace Jarvis_V2_Console.Models.AdminAccess;
 
