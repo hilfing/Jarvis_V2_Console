@@ -29,6 +29,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from typing_extensions import List, Dict, Optional
 
+from chatbot_handler import get_response_with_context
+
 # Enhanced Logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -761,6 +763,7 @@ def process_chat_message(message: bytes) -> str:
     try:
         # Convert bytes to string
         message_str = message.decode('utf-8')
+        logger.info(f"Received chat message: {message_str}")
 
         # Try parsing as JSON first
         try:
@@ -778,9 +781,7 @@ def process_chat_message(message: bytes) -> str:
                 current_message = chat_data['msg']
 
                 response, tokens = get_response_with_context(history, current_message)
-
-                context_length = len(history)
-                return f"Received message in context of {context_length} previous messages. \nCurrent message: {current_message}"
+                return json.dumps({'response': response, 'tokens': tokens})
 
             # If JSON doesn't match expected structure, fall back to plain text processing
             raise ValueError("JSON structure does not match expected format")
@@ -790,7 +791,7 @@ def process_chat_message(message: bytes) -> str:
 
     except Exception as e:
         logger.error(f"Message processing error: {e}")
-        return "Error processing message"
+        return json.dumps({'response': "Message Processing Error", 'tokens': 0})
 
 # Include the router in your main FastAPI app
 app.include_router(base_router, prefix="/jarvis/v1")
