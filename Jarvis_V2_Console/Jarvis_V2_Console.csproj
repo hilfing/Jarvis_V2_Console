@@ -13,8 +13,9 @@
         <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
         <DebugType>none</DebugType>
         <Authors>HilFing</Authors>
-        <Version>0.1.1</Version>
-        <Company>Paul Studios</Company>
+        <SupportUrl>https://hilfing.dev/#contact</SupportUrl>
+        <Version>1.0.0</Version>
+        <Company>HilFing</Company>
         <Description>Jarvis V2. AI Chatbot and Digital Assistant</Description>
         <RepositoryType>git</RepositoryType>
         <RepositoryUrl>https://github.com/hilfing/Jarvis_V2_Console</RepositoryUrl>
@@ -23,7 +24,11 @@
         <Copyright>Copyright © 2024 Paul Studios</Copyright>
         <Title>Jarvis V2</Title>
         <PackageTags>AI;Chatbot;Assistant</PackageTags>
-  </PropertyGroup>
+        <PublishTrimmed>true</PublishTrimmed>
+        <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+        <TrimMode>copyused</TrimMode>
+        <EnableSourceGenerators>true</EnableSourceGenerators>
+    </PropertyGroup>
 
     <ItemGroup>
       <Content Include="..\.dockerignore">
@@ -31,6 +36,16 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+        <RuntimeHostConfigurationOption Include="System.Text.Json.Serialization.EnableUnsafeReflection" Value="true" />
+        <RuntimeHostConfigurationOption Include="System.Text.Json.Serialization.EnableReflectionSerialization" Value="true" />
+    </ItemGroup>
+    <ItemGroup>
+        <AssemblyMetadata Include="System.Text.Json.Serialization.EnableUnsafeReflection" Value="true" />
+        <AssemblyMetadata Include="Newtonsoft.Json" Value="Preserve" />
+        <AssemblyMetadata Include="System.Text.Json" Value="Preserve" />
+    </ItemGroup>
+    
     <ItemGroup>
       <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
       <PackageReference Include="ini-parser" Version="2.5.2" />
