@@ -130,10 +130,10 @@ fetch('https://your-api-endpoint.com/data')
         table.AddColumn("[blue]Sender[/]");
         table.AddColumn("[blue]Message[/]");
 
-        foreach (var message in chatHistory.TakeLast(10))
+        foreach (var message in chatHistory)
         {
-            Color senderColor = message.Sender == "User" ? Color.Green : Color.Red;
-            var formattedContent = GeneralUtils.ConvertMarkdownToMarkup(message.Content);
+            Color senderColor = message.Sender == "User" ? Color.Gold1 : Color.Magenta1;
+            var formattedContent = GeneralUtils.ConvertHtmlToMarkup(message.Content);
             
             table.AddRow(
                 new Markup(message.Timestamp.ToString("HH:mm:ss")),

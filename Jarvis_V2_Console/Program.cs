@@ -94,9 +94,6 @@ public static class Program
         });
 
         DisplayWelcomeMessage();
-        
-        var chat2 = new JarvisChat();
-        chat2.Start();
 
         UserManager userManager = new UserManager(dbHandler);
 

@@ -103,7 +103,7 @@ public static class GeneralUtils
         }
     }
     
-    public static string ConvertMarkdownToMarkup(string html)
+    public static string ConvertHtmlToMarkup(string html)
     {
         
         if (string.IsNullOrEmpty(html))
