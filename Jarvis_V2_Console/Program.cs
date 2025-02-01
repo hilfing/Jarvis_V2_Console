@@ -1,8 +1,10 @@
 ﻿using System.Reflection;
+using System.Runtime.InteropServices.JavaScript;
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
+using Jarvis_V2_Console.Screens;
 using Jarvis_V2_Console.Utils;
-using Jarvis_V2_Console.Screens.ChatScreen;
+
 using Newtonsoft.Json.Linq;
 using Sharprompt;
 using Spectre.Console;
@@ -18,6 +20,7 @@ public static class Program
         DatabaseHandler dbHandler = null;
         SecureConnectionClient client = null;
         AdminAccessClient adminAccessClient = null;
+        ChatDatabaseLogger chatLogger = null;
 
         AnsiConsole.Clear();
         AnsiConsole.Write(new FigletText("JarvisAI V2").Color(Color.Green).Centered());
@@ -69,7 +72,6 @@ public static class Program
                     AnsiConsole.MarkupLine("[green]Step 4:[/] Establishing Secure API Connection...");
                     JObject apiCreds = json["API"]?.Value<JObject>() ?? new JObject();
                     string baseUrl = apiCreds["BaseUrl"]?.Value<string>() ?? "http://localhost:8000/jarvis/v1/";
-                    client = new SecureConnectionClient(baseUrl);
                     adminAccessClient =
                         new AdminAccessClient(baseUrl);
                     GeneralUtils.VerifyServerConnection(baseUrl);
@@ -78,6 +80,9 @@ public static class Program
                     string? adminPassword = apiCreds["AdminPassword"]?.Value<string>() ?? "admin";
                     adminAccessClient.GetAccessTokenAsync(adminUsername, adminPassword).GetAwaiter().GetResult();
                     setupTask.Increment(20);
+                    
+                    AnsiConsole.MarkupLine("[green]Step 5:[/] Setting up End to End Encryption Channel...");
+                    client = new SecureConnectionClient(baseUrl);
                     SecureConnectionSetup.EnforceSecureConnection(client);
                     setupTask.Increment(20);
                 });
@@ -85,6 +90,9 @@ public static class Program
         catch (Exception e)
         {
             logger.Critical("Failure to load JarvisAI. Please contact the Developer.");
+            GeneralUtils.Cleanup();
+            Environment.Exit(1);
+            return;
         }
 
         AnsiConsole.Status().Start("Loading JarvisAI...", ctx =>
@@ -94,7 +102,7 @@ public static class Program
         });
 
         DisplayWelcomeMessage();
-
+        
         UserManager userManager = new UserManager(dbHandler);
 
         switch (ChooseOption(logger))
@@ -138,8 +146,11 @@ public static class Program
         if (userManager.IsUserAuthenticated())
         {
             AnsiConsole.MarkupLine("[green]User authenticated successfully![/]");
-            var chat = new JarvisChat();
-            chat.Start();
+            chatLogger = new ChatDatabaseLogger(dbHandler);
+            string username = userManager.GetUserData("Username");
+            chatLogger.StartNewSession(username, new []{username, "Jarvis"}).GetAwaiter().GetResult();
+            var chatScreen = new ChatScreen();
+            chatScreen.StartChat(client, chatLogger, username);
         }
         else
         {
