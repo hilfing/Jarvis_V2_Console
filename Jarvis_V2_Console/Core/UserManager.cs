@@ -14,7 +14,7 @@ public class UserManager
         { "FirstName", null },
         { "LastName", null },
         { "Role", null },
-        { "LastLogin", null }
+        { "LastLogin", null },
     };
 
     private static bool IsAuthenticated = false;
@@ -35,6 +35,7 @@ public class UserManager
         {
             logger.Debug("Registration flag detected. Skipping login verification.");
             logger.Info($"Login Confirmed for User: {username}");
+            IsAuthenticated = true;
             return true;
         }
 
@@ -91,7 +92,7 @@ public class UserManager
         try
         {
             // Use DatabaseHandler method to fetch user details
-            var detailsResult = _dbHandler.FetchUserDetailsByUsername(username);
+            var detailsResult = _dbHandler.FetchUserDetailsByUsernameSync(username);
 
             if (detailsResult.IsSuccess && detailsResult.Data != null)
             {
@@ -200,4 +201,5 @@ public class UserManager
     }
     
     public bool IsUserAuthenticated() => IsAuthenticated;
+    public string? GetUserData(string key) => UserData[key];
 }
