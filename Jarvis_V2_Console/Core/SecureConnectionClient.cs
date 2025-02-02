@@ -19,6 +19,7 @@ public class SecureConnectionClient
     private static KeyExchangeResult? _currentKeyExchangeResult;
     private static HttpClient _httpClient;
     private readonly string _baseUrl;
+    private static readonly string _clientid = ConfigManager.GetValue("API", "ClientId");
 
     public SecureConnectionClient(string baseUrl)
     {
@@ -46,7 +47,7 @@ public class SecureConnectionClient
             var keyExchangeRequest = new KeyExchangeRequest
             {
                 ClientPublicKey = clientPublicKey,
-                ClientId = Guid.NewGuid().ToString()
+                ClientId = _clientid
             };
 
             logger.Debug($"Sending key exchange request with Client ID: {keyExchangeRequest.ClientId}");
@@ -222,6 +223,11 @@ public class SecureConnectionClient
             };
             // Send the encrypted request
             var response = await _httpClient.PostAsJsonAsync($"{_baseUrl}{endpoint}", encryptedRequest, options1);
+            if (!response.IsSuccessStatusCode)
+            {
+                logger.Error("Encrypted request failed. Status Code: " + response.StatusCode);
+                return OperationResult<string>.Failure($"Request failed with status: {response.StatusCode}");
+            }
             var content = await response.Content.ReadAsStringAsync();
 
             // Parse the response
