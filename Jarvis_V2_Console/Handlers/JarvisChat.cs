@@ -63,8 +63,12 @@ public class JarvisChat
             );
 
             if (string.IsNullOrWhiteSpace(userMessage)) continue;
-            if (userMessage.ToLower() == "/exit"
-                ) break;
+            if (userMessage.ToLower() == "/exit")
+            {
+                AnsiConsole.MarkupLine("[red]Exiting Jarvis Chat...[/]");
+                logger.Info("Exiting Jarvis Chat...");
+                break;
+            }
 
             ProcessMessage(userMessage);
         }
@@ -72,12 +76,38 @@ public class JarvisChat
 
     public void ProcessMessage(string userMessage)
     {
-
-        // Generate and display Jarvis response
-        string jarvisResponse = GenerateResponse(userMessage);
+        if (string.IsNullOrWhiteSpace(userMessage)) return;
         AddMessage("User", userMessage);
-        AddMessage("Assistant", jarvisResponse);
 
+        if (userMessage[0] == "/command"[0])
+        {
+            logger.Info($"Command detected. Processing command: {userMessage}");
+            // Handle commands
+            string command = userMessage.Substring(1);
+            switch (command)
+            {
+                case "help":
+                    string response = """
+                        [yellow][bold]Commands:[/][/]
+                        [yellow]/clear[/]: Clear chat history
+                        """; 
+                    AddMessage("Assistant", response);
+                    break;
+                case "clear":
+                    AddMessage("Assistant", "[red]Chat history cleared.[/]");
+                    chatHistory.Clear();
+                    break;
+                default:
+                    AddMessage("Assistant", "[red]Invalid command. Please try again. Use /help for a list of commands.[/]");
+                    break;
+            }
+        }
+        else
+        {
+            // Generate and display Jarvis response
+            string jarvisResponse = GenerateResponse(userMessage);
+            AddMessage("Assistant", jarvisResponse);
+        }
         // Render chat history
         RenderChatHistory();
     }
