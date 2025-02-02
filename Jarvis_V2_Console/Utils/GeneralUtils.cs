@@ -1,5 +1,7 @@
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Jarvis_V2_Console.Core;
 using Jarvis_V2_Console.Handlers;
@@ -228,5 +230,21 @@ public static class GeneralUtils
             .Trim();
         logger.Debug($"Converted HTML to markup:\n{result}");
         return result;
+    }
+    
+    public static string FormatJsonString(string jsonString)
+    {
+        using (var doc = JsonDocument.Parse(jsonString))
+        {
+            using (var stream = new MemoryStream())
+            {
+                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                {
+                    doc.WriteTo(writer);
+                }
+            
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
+        }
     }
 }
