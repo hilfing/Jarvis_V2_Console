@@ -103,81 +103,131 @@ public static class GeneralUtils
             return new JObject();
         }
     }
-    public static string ConvertHtmlToMarkup(string html)
-{
-    if (string.IsNullOrEmpty(html))
-        return html;
-
-    // Replace common HTML tags with Spectre.Console Markup
-    html = Regex.Replace(html, "<b>", "[bold]");
-    html = Regex.Replace(html, "</b>", "[/]");
-    html = Regex.Replace(html, "<strong>", "[bold]");
-    html = Regex.Replace(html, "</strong>", "[/]");
-
-    html = Regex.Replace(html, "<i>", "[italic]");
-    html = Regex.Replace(html, "</i>", "[/]");
-    html = Regex.Replace(html, "<em>", "[italic]");
-    html = Regex.Replace(html, "</em>", "[/]");
-
-    html = Regex.Replace(html, "<u>", "[underline]");
-    html = Regex.Replace(html, "</u>", "[/]");
-
-    html = Regex.Replace(html, "<s>", "[strikethrough]");
-    html = Regex.Replace(html, "</s>", "[/]");
-    html = Regex.Replace(html, "<strike>", "[strikethrough]");
-    html = Regex.Replace(html, "</strike>", "[/]");
-
-    html = Regex.Replace(html, "<code>", "[green3_1]");
-    html = Regex.Replace(html, "</code>", "[/]");
-
-    html = Regex.Replace(html, "<pre>", "\n[grey]");
-    html = Regex.Replace(html, "</pre>", "[/]\n");
-
-    html = Regex.Replace(html, "<blockquote>", "\n> ");
-    html = Regex.Replace(html, "</blockquote>", "\n");
-
-    html = Regex.Replace(html, "<h1>", "\n[bold][underline]");
-    html = Regex.Replace(html, "</h1>", "[/][/]\n");
-
-    html = Regex.Replace(html, "<h2>", "\n[bold]");
-    html = Regex.Replace(html, "</h2>", "[/]\n");
-
-    html = Regex.Replace(html, "<h3>", "\n[bold][italic]");
-    html = Regex.Replace(html, "</h3>", "[/][/]\n");
-
-    // Ignore color spans
-    html = Regex.Replace(html, "<span style=\"color:.*?\">", "");
-    html = Regex.Replace(html, "</span>", "");
-
-    html = Regex.Replace(html, "<a href=\"(.*?)\">", "[link=$1]");
-    html = Regex.Replace(html, "</a>", "[/]");
-
-    // Handle list items with newlines
-    html = Regex.Replace(html, "<li>", "\n- ");
-    html = Regex.Replace(html, "</li>", "");
-
-    // Replace <br> with a single newline
-    html = Regex.Replace(html, "<br>", "\n");
-
-    // Replace <p> with double newlines for paragraphs
-    html = Regex.Replace(html, "<p>", "\n\n");
-    html = Regex.Replace(html, "</p>", "\n\n");
-
-    // Remove any remaining HTML tags
-    html = Regex.Replace(html, "<.*?>", "");
-
-    // Remove blocks starting with & and ending with ; (HTML entities)
-    html = Regex.Replace(html, "&[^;]+;", "");
-
-    // Normalize whitespace (replace multiple spaces with a single space)
-    html = Regex.Replace(html, @"[ \t]+", " ");
-    html = Regex.Replace(html, "&nbsp;", " ");
-
-    // Remove leading/trailing whitespace and normalize newlines
-    html = html.Trim();
-    html = Regex.Replace(html, @"\n\s*\n", "\n\n"); // Preserve paragraph breaks
-    html = Regex.Replace(html, @"\n+", "\n"); // Remove extra newlines
     
-    return html.Trim();
-}
+    private static readonly Dictionary<string, (string opening, string closing)> TagMap = new()
+    {
+        { "b", ("[bold]", "[/]") },
+        { "strong", ("[bold]", "[/]") },
+        { "i", ("[italic]", "[/]") },
+        { "em", ("[italic]", "[/]") },
+        { "u", ("[underline]", "[/]") },
+        { "s", ("[strikethrough]", "[/]") },
+        { "strike", ("[strikethrough]", "[/]") },
+        { "code", ("[green3_1]", "[/]") },
+        { "pre", ("[grey]", "[/]") },
+        { "h1", ("[bold][underline]", "[/][/]") },
+        { "h2", ("[bold][italic]", "[/][/]") },
+        { "h3", ("[bold]", "[/]") }
+    };
+
+    public static string ConvertHtmlToMarkup(string html)
+    {
+        if (string.IsNullOrEmpty(html))
+            return html;
+
+        var lines = new List<string>();
+        var currentLine = new List<string>();
+        var stack = new Stack<string>();
+
+        // Split into individual elements
+        var elements = Regex.Split(html, "(<[^>]+>)")
+                          .Where(s => !string.IsNullOrWhiteSpace(s))
+                          .Select(s => s.Trim());
+
+        foreach (var element in elements)
+        {
+            if (element.StartsWith("<"))
+            {
+                if (element.StartsWith("</")) // Closing tag
+                {
+                    var tagName = Regex.Match(element, @"</(\w+)").Groups[1].Value.ToLower();
+                    
+                    // Handle specific closing tags
+                    switch (tagName)
+                    {
+                        
+                        case "h3":
+                        case "h2":
+                        case "li":
+                            if (stack.Count > 0) currentLine.Add(stack.Pop());
+                            lines.Add(string.Join("", currentLine));
+                            currentLine.Clear();
+                            break;
+                        
+                        case "ul":
+                            lines.Add(string.Join("", currentLine));
+                            currentLine.Clear();
+                            break;
+                            
+                        case "p":
+                        case "h1":
+                        case "br":
+                            if (stack.Count > 0) currentLine.Add(stack.Pop());
+                            lines.Add(string.Join("", currentLine));
+                            lines.Add(""); // Add a newline
+                            currentLine.Clear();
+                            break;
+                        
+                        default:
+                            if (stack.Count > 0) currentLine.Add(stack.Pop());
+                            break;
+                    }
+                }
+                else // Opening tag
+                {
+                    var match = Regex.Match(element, @"<(\w+)(?:\s+href=""([^""]+)"")?");
+                    var tagName = match.Groups[1].Value.ToLower();
+                    
+                    switch (tagName)
+                    {
+                        case "a":
+                            var href = match.Groups[2].Value;
+                            currentLine.Add($"[link={href}]");
+                            stack.Push("[/]");
+                            break;
+                            
+                        case "li":
+                            currentLine.Add("- ");
+                            break;
+                            
+                        case "ul":
+                        case "ol":
+                            if (currentLine.Any())
+                            {
+                                lines.Add(string.Join("", currentLine));
+                                currentLine.Clear();
+                            }
+                            break;
+                            
+                        default:
+                            if (TagMap.ContainsKey(tagName))
+                            {
+                                var (opening, closing) = TagMap[tagName];
+                                currentLine.Add(opening);
+                                stack.Push(closing);
+                            }
+                            break;
+                    }
+                }
+            }
+            else // Text content
+            {
+                currentLine.Add(element);
+            }
+        }
+
+        // Add any remaining content
+        if (currentLine.Any())
+        {
+            lines.Add(string.Join("", currentLine));
+        }
+
+        // Clean up the output
+        var result = string.Join("\n", lines)
+            .Replace("\n\n\n", "\n\n")  // Remove triple newlines
+            .Replace("  ", " ")         // Remove double spaces
+            .Trim();
+        logger.Debug($"Converted HTML to markup:\n{result}");
+        return result;
+    }
 }
