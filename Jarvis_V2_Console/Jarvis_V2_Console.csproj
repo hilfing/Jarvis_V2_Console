@@ -21,12 +21,12 @@
         <RepositoryUrl>https://github.com/hilfing/Jarvis_V2_Console</RepositoryUrl>
         <Product>JarvisAI</Product>
         <PackageId>JarvisAI_V2</PackageId>
-        <Copyright>Copyright © 2024 Paul Studios</Copyright>
+        <Copyright>Copyright © 2024 HilFing</Copyright>
         <Title>Jarvis V2</Title>
         <PackageTags>AI;Chatbot;Assistant</PackageTags>
         <PublishTrimmed>true</PublishTrimmed>
         <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-        <TrimMode>copyused</TrimMode>
+        <TrimMode>partial</TrimMode>
         <EnableSourceGenerators>true</EnableSourceGenerators>
     </PropertyGroup>
 
@@ -38,12 +38,7 @@
 
     <ItemGroup>
         <RuntimeHostConfigurationOption Include="System.Text.Json.Serialization.EnableUnsafeReflection" Value="true" />
-        <RuntimeHostConfigurationOption Include="System.Text.Json.Serialization.EnableReflectionSerialization" Value="true" />
-    </ItemGroup>
-    <ItemGroup>
         <AssemblyMetadata Include="System.Text.Json.Serialization.EnableUnsafeReflection" Value="true" />
-        <AssemblyMetadata Include="Newtonsoft.Json" Value="Preserve" />
-        <AssemblyMetadata Include="System.Text.Json" Value="Preserve" />
     </ItemGroup>
     
     <ItemGroup>
