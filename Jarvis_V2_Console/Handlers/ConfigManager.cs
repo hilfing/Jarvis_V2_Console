@@ -41,6 +41,14 @@ public static class ConfigManager
             )
         };
 
+        _configStructure["API"] = new Dictionary<string, (string, string)>
+        {
+            ["ClientId"] = (
+                Guid.NewGuid().ToString(),
+                "Client ID for the API Encryption Sequence (Must not change without proper authorization from Developer; This can break the Application)"
+            ),
+        };
+
         logger.Info("Default configuration structure initialized.");
     }
 
