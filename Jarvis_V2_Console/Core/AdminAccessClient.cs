@@ -64,7 +64,7 @@ public class AdminAccessClient
         }
     }
 
-    public async Task<OperationResult<bool>> FetchLogsAsync()
+    public async Task<OperationResult<bool>> FetchLogsAsync(string fileName = "logs.json")
     {
         if (string.IsNullOrEmpty(_accessToken))
         {
@@ -96,9 +96,9 @@ public class AdminAccessClient
             if (logs != null && logs.Logs != null)
             {
                 AnsiConsole.MarkupLine("[green][bold]Success:[/] Logs fetched successfully.[/]");
-                var filePath = Prompt.Input<string>("Enter file name", "logs.json");
-                await File.WriteAllTextAsync(filePath,
-                    JsonSerializer.Serialize(logs, new JsonSerializerOptions { WriteIndented = true }));
+                string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+                var jsonString = JsonSerializer.Serialize(logs, LogsJsonContext.Default.LogsResponse);
+                await File.WriteAllTextAsync(filePath, GeneralUtils.FormatJsonString(jsonString));
                 AnsiConsole.MarkupLine($"[green]Logs saved to [bold]{GeneralUtils.SimplifyFilePath(filePath)}[/].[/]");
                 logger.Info($"Logs saved to {GeneralUtils.SimplifyFilePath(filePath)}");
                 return OperationResult<bool>.Success(true);
