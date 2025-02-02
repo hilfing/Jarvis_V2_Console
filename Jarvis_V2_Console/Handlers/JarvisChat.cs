@@ -124,6 +124,10 @@ public class JarvisChat
         var response = client.SendEncryptedChatRequestAsync("chat", jsonString).GetAwaiter().GetResult();
 
         // Extract the response content (assuming the response is in JSON format)
+        if (!response.IsSuccess)
+        {
+            return "Sorry, I am currently offline. Please try again later.";
+        }
         var responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response.Data);
         string responseContent = responseData["response"].ToString();
 
