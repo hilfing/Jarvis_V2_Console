@@ -131,8 +131,7 @@ public static class GeneralUtils
 
         // Split into individual elements
         var elements = Regex.Split(html, "(<[^>]+>)")
-                          .Where(s => !string.IsNullOrWhiteSpace(s))
-                          .Select(s => s.Trim());
+            .Where(s => !string.IsNullOrWhiteSpace(s));
 
         foreach (var element in elements)
         {
