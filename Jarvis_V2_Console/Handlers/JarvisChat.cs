@@ -14,12 +14,14 @@ public class JarvisChat
     private static Logger logger = new Logger("JarvisAI.Handlers.JarvisChat");
     private List<ChatMessage> chatHistory = new List<ChatMessage>();
     private static SecureConnectionClient client;
+    private static AdminAccessClient adminClient;
     private ChatDatabaseLogger chatLogger;
     private string username;
 
-    public JarvisChat(SecureConnectionClient _client, ChatDatabaseLogger _chatLogger, string _username, List<Dictionary<string, string>> initialHistory = null)
+    public JarvisChat(SecureConnectionClient _client, AdminAccessClient _adminClient, ChatDatabaseLogger _chatLogger, string _username, List<Dictionary<string, string>> initialHistory = null)
     {
         client = _client;
+        adminClient = _adminClient;
         chatLogger = _chatLogger;
         username = _username;
         if (initialHistory != null)
@@ -80,28 +82,60 @@ public class JarvisChat
         AddMessage("User", userMessage);
 
         if (userMessage[0] == "/command"[0])
-        {
-            logger.Info($"Command detected. Processing command: {userMessage}");
-            // Handle commands
-            string command = userMessage.Substring(1);
-            switch (command)
+{
+    logger.Info($"Command detected. Processing command: {userMessage}");
+    // Handle commands
+    string[] commandParts = userMessage.Substring(1).Split(' ');
+    string command = commandParts[0].ToLower();
+    string[] args = commandParts.Length > 1 ? commandParts.Skip(1).ToArray() : Array.Empty<string>();
+
+    switch (command)
+    {
+        case "help":
+            string response = """
+                [yellow][bold]Commands:[/][/]
+                [yellow]/clear[/]: Clear chat history
+                [yellow]/logs <filename>[/]: Export chat logs to file (ADMIN ONLY)
+
+                """; 
+            AddMessage("Assistant", response);
+            break;
+
+        case "clear":
+            AddMessage("Assistant", "[red]Chat history cleared.[/]");
+            chatHistory.Clear();
+            break;
+
+        case "logs":
+            if (args.Length == 0)
             {
-                case "help":
-                    string response = """
-                        [yellow][bold]Commands:[/][/]
-                        [yellow]/clear[/]: Clear chat history
-                        """; 
-                    AddMessage("Assistant", response);
-                    break;
-                case "clear":
-                    AddMessage("Assistant", "[red]Chat history cleared.[/]");
-                    chatHistory.Clear();
-                    break;
-                default:
-                    AddMessage("Assistant", "[red]Invalid command. Please try again. Use /help for a list of commands.[/]");
-                    break;
+                AddMessage("Assistant", "[red]Please specify the output filename. Usage: /logs <filename>[/]");
+                break;
             }
-        }
+
+            string filename = args[0];
+            if (!filename.EndsWith(".log"))
+            {
+                filename += ".log";
+            }
+
+            AddMessage("Assistant", $"[red]Exporting chat logs to {filename}...[/]");
+            var logs = adminClient.FetchLogsAsync(filename).GetAwaiter().GetResult();
+            if (logs.IsSuccess)
+            {
+                AddMessage("Assistant", $"[green]Logs exported successfully to {filename}[/]");
+            }
+            else
+            {
+                AddMessage("Assistant", $"[red]{logs.ErrorMessage}[/]");
+            }
+            break;
+
+        default:
+            AddMessage("Assistant", "[red]Invalid command. Please try again. Use /help for a list of commands.[/]");
+            break;
+    }
+}
         else
         {
             // Generate and display Jarvis response
