@@ -150,7 +150,7 @@ public static class Program
             string username = userManager.GetUserData("Username");
             chatLogger.StartNewSession(username, new []{username, "Jarvis"}).GetAwaiter().GetResult();
             var chatScreen = new ChatScreen();
-            chatScreen.StartChat(client, chatLogger, username);
+            chatScreen.StartChat(client,adminAccessClient ,chatLogger, username);
         }
         else
         {
